@@ -7,6 +7,7 @@ package com.kmcguire.KFactions;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.RandomAccessFile;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -19,6 +20,7 @@ import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.craftbukkit.util.LongHash;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
@@ -63,6 +65,8 @@ public class P extends JavaPlugin implements IFactionsProtection {
     static final int    NOBOOM =       0x02;
     static final int    NODECAY =      0x04;
     
+    public HashMap<Long, Integer>      emcMap;
+    
     // configuration
     public double       landPowerCostPerHour;
     
@@ -87,9 +91,65 @@ public class P extends JavaPlugin implements IFactionsProtection {
         //            .
     }
     
+    public int getEMC(int tid, int did) {
+        if (!emcMap.containsKey(LongHash.toLong(tid, did)))
+            return 0;
+        return emcMap.get(LongHash.toLong(tid, did));
+    }
+    
     @Override
     public void onEnable() {
-        File        file;
+        File                            file;
+        File                            femcvals;
+        RandomAccessFile                raf;
+        Iterator<Entry<Long, Integer>>  i;
+        Entry<Long, Integer>            e;
+        
+        // ensure that emcvals.txt exists
+        femcvals = new File("kfactions.emcvals.txt");
+        if (!femcvals.exists()) {
+            try {
+                raf = new RandomAccessFile(femcvals, "rw");
+                i = EMCMap.emcMap.entrySet().iterator();
+                while (i.hasNext()) {
+                    e = i.next();
+                    raf.writeBytes(String.format("%d:%d=%d\n", LongHash.msw(e.getKey()), LongHash.lsw(e.getKey()), e.getValue()));
+                }
+                raf.close();
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            }
+        }
+        
+        // load from emcvals.txt
+        emcMap = new HashMap<Long, Integer>();
+        
+        try {
+            String      line;
+            int         epos;
+            int         cpos;
+            int         tid;
+            int         did;
+            int         emc;
+            
+            raf = new RandomAccessFile(femcvals, "rw");
+            while ((line = raf.readLine()) != null) {
+                epos = line.indexOf("=");
+                if (epos > -1) {
+                    cpos = line.indexOf(":");
+                    tid = Integer.parseInt(line.substring(0, cpos));
+                    did = Integer.parseInt(line.substring(cpos + 1, epos));
+                    emc = Integer.parseInt(line.substring(epos + 1));
+                    emcMap.put(LongHash.toLong(tid, did), emc);
+                }
+            }
+            raf.close();
+        } catch (FileNotFoundException ex) {
+            ex.printStackTrace();
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+        
         
         // configuration
         landPowerCostPerHour = 8192.0 / 24.0 / 4.0;
@@ -108,12 +168,12 @@ public class P extends JavaPlugin implements IFactionsProtection {
                 y = fis.readDouble();
                 z = fis.readDouble();
                 fis.close();
-            } catch (FileNotFoundException e) {
+            } catch (FileNotFoundException ex) {
                 wname = "world";
                 x = 0.0d;
                 y = 0.0d;
                 z = 0.0d;
-            } catch (IOException e) {
+            } catch (IOException ex) {
                 wname = "world";
                 x = 0.0d;
                 y = 0.0d;
@@ -130,21 +190,21 @@ public class P extends JavaPlugin implements IFactionsProtection {
         if (file.exists()) {
             try {
                 factions = (HashMap<String, Faction>)SLAPI.load("plugin.data.factions");
-                Iterator<Entry<String, Faction>>        i;
+                Iterator<Entry<String, Faction>>        fi;
                 Faction                                 f;
                 
-                i = factions.entrySet().iterator();
+                fi = factions.entrySet().iterator();
                 smsg("loaded data from disk");
-                //while (i.hasNext()) {
-                //    f = i.next().getValue();
+                //while (fi.hasNext()) {
+                //    f = fi.next().getValue();
                 //    smsg(String.format("object:%x int:%d", f.test, f.test2));
                 //}
                 
-            } catch (Exception e) {
+            } catch (Exception ex) {
                 factions = new HashMap<String, Faction>();
                 saveToDisk = false;
                 smsg("error when trying to load data from disk (SAVE TO DISK DISABLED)");
-                e.printStackTrace();
+                ex.printStackTrace();
             }
         } else {
             factions = new HashMap<String, Faction>();
@@ -159,16 +219,16 @@ public class P extends JavaPlugin implements IFactionsProtection {
         this.getServer().getPluginManager().registerEvents(new PlayerHook(this), this);
 
         // let faction objects initialize anything <new> .. LOL like new fields
-        Iterator<Entry<String, Faction>>            e;
+        Iterator<Entry<String, Faction>>            fe;
         Faction                                     f;
         
-        e = factions.entrySet().iterator();
-        while (e.hasNext()) {
-            f = e.next().getValue();
-            getServer().getLogger().info(String.format("§7[f] initFromStorage(%s)", f.name));
+        fe = factions.entrySet().iterator();
+        while (fe.hasNext()) {
+            f = fe.next().getValue();
+            //getServer().getLogger().info(String.format("§7[f] initFromStorage(%s)", f.name));
             f.initFromStorage();
             // remove world anchors (temp)
-            getServer().getLogger().info("removing world anchors");
+            //getServer().getLogger().info("removing world anchors");
             //for (WorldAnchorLocation wal : f.walocs) {
             //    getServer().getWorld(wal.w).getBlockAt(wal.x, wal.y, wal.z).setTypeId(0);
             //    getServer().getWorld(wal.w).getBlockAt(wal.x, wal.y, wal.z).setData((byte)0);
@@ -2354,7 +2414,7 @@ public class P extends JavaPlugin implements IFactionsProtection {
             mid = player.getItemInHand().getTypeId();
             dat = player.getItemInHand().getData().getData();
             
-            pts = (double)ee.EEMaps.getEMC(mid, dat);
+            pts = (double)getEMC(mid, dat);
             
             player.sendMessage(String.format("§7[f] %f/item total:%f", pts, pts * icnt));
             
@@ -2381,7 +2441,7 @@ public class P extends JavaPlugin implements IFactionsProtection {
             dat = player.getItemInHand().getData().getData();
             
             //pts = (double)EEMaps.getEMC(mid, dat);
-            pts = (double)ee.EEMaps.getEMC(mid, dat);       
+            pts = (double)getEMC(mid, dat);       
             
             player.sendMessage(String.format("§7[f] Item value is %f", pts));
             
