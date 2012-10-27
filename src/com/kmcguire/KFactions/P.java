@@ -11,6 +11,7 @@ import java.io.RandomAccessFile;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -21,7 +22,6 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.InvalidConfigurationException;
-import org.bukkit.configuration.MemorySection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.craftbukkit.util.LongHash;
 import org.bukkit.entity.Entity;
@@ -99,8 +99,12 @@ public class P extends JavaPlugin implements IFactionsProtection {
         Map<String, Object>                 m;
         Faction                             f;
         FactionChunk                        fc;
+        LinkedList<ConfigurationSection>    zaps;  
+        HashMap<String, Faction>            allfactions;
         
+        zaps = new LinkedList<ConfigurationSection>();
         cfg = new YamlConfiguration();
+        allfactions = new HashMap<String, Faction>();
         
         try {
             cfg.load(fdata);
@@ -117,54 +121,69 @@ public class P extends JavaPlugin implements IFactionsProtection {
             cfg_root = (ConfigurationSection)e.getValue();
             
             f = new Faction();
+            f.chunks = new HashMap<Long, FactionChunk>();
             
             // access all of the list/array/map type stuff
             cfg_chunks = cfg_root.getConfigurationSection("chunks");
-            for (String key : cfg_chunks.getKeys(false)) {
-                ConfigurationSection        ccs;
-                ConfigurationSection        _ccs;
-                fc = new FactionChunk();
-                
-                fc.x = Integer.parseInt(key.substring(1, key.indexOf('_')));
-                fc.z = Integer.parseInt(key.substring(key.indexOf('_') + 1));
-                
-                fc.builders = null;
-                fc.users = null;
-                fc.faction = f;
-                
-                ccs = cfg_chunks.getConfigurationSection(key);
-                fc.mru = ccs.getInt("mru");
-                fc.mrb = ccs.getInt("mrb");
-                
-                _ccs = ccs.getConfigurationSection("tid");
-                fc.tid = new HashMap<TypeDataID, Integer>();
-                
-                for (Entry<String, Object> en : _ccs.getValues(false).entrySet()) {
-                    TypeDataID          tid;
+            if (cfg_chunks != null) {
+                getLogger().info("CHUNKS NOT NULL");
+                for (String key : cfg_chunks.getKeys(false)) {
+                    ConfigurationSection        ccs;
+                    ConfigurationSection        _ccs;
+                    fc = new FactionChunk();
+
+                    fc.x = Integer.parseInt(key.substring(1, key.indexOf('_')));
+                    fc.z = Integer.parseInt(key.substring(key.indexOf('_') + 1));
                     
-                    tid = new TypeDataID();
-                    tid.typeId = Integer.parseInt(en.getKey());
-                    tid.dataId = 0;
-                    fc.tid.put(tid, (Integer)en.getValue());
-                }
-                
-                _ccs = ccs.getConfigurationSection("tidu");
-                fc.tidu = new HashMap<TypeDataID, Integer>();
-                
-                for (Entry<String, Object> en : _ccs.getValues(false).entrySet()) {
-                    TypeDataID          tid;
+                    fc.builders = null;
+                    fc.users = null;
+                    fc.faction = f;
+
+                    ccs = cfg_chunks.getConfigurationSection(key);
+                    fc.mru = ccs.getInt("mru");
+                    fc.mrb = ccs.getInt("mrb");
+                    fc.worldName = ccs.getString("worldName");
                     
-                    tid = new TypeDataID();
-                    tid.typeId = Integer.parseInt(en.getKey());
-                    tid.dataId = 0;
-                    fc.tid.put(tid, (Integer)en.getValue());
+                    _ccs = ccs.getConfigurationSection("tid");
+                    fc.tid = new HashMap<TypeDataID, Integer>();
+                    if (_ccs != null) {
+                        for (Entry<String, Object> en : _ccs.getValues(false).entrySet()) {
+                            TypeDataID          tid;
+
+                            tid = new TypeDataID();
+                            tid.typeId = Integer.parseInt(en.getKey());
+                            tid.dataId = 0;
+                            fc.tid.put(tid, (Integer)en.getValue());
+                        }
+                    }
+                    
+                    _ccs = ccs.getConfigurationSection("tidu");
+                    fc.tidu = new HashMap<TypeDataID, Integer>();
+
+                    if (_ccs != null) {
+                        for (Entry<String, Object> en : _ccs.getValues(false).entrySet()) {
+                            TypeDataID          tid;
+
+                            tid = new TypeDataID();
+                            tid.typeId = Integer.parseInt(en.getKey());
+                            tid.dataId = 0;
+                            fc.tid.put(tid, (Integer)en.getValue());
+                        }
+                    }
+                    
+                    f.chunks.put(getChunkLong(getServer().getWorld(fc.worldName), fc.x, fc.z), fc);
+                    //
                 }
             }
+            
             cfg_friends = cfg_root.getConfigurationSection("friends");
             
             f.friends = new HashMap<String, Integer>();
-            for (Entry<String, Object> en : cfg_friends.getValues(false).entrySet()) {
-                f.friends.put(en.getKey(), (Integer)en.getValue());
+            
+            if (cfg_friends != null) {
+                for (Entry<String, Object> en : cfg_friends.getValues(false).entrySet()) {
+                    f.friends.put(en.getKey(), (Integer)en.getValue());
+                }
             }
             
             cfg_invites = cfg_root.getConfigurationSection("invites");
@@ -173,44 +192,60 @@ public class P extends JavaPlugin implements IFactionsProtection {
             cfg_players = cfg_root.getConfigurationSection("players");
             f.players = new HashMap<String, FactionPlayer>();
             
-            for (Entry<String, Object> en : cfg_players.getValues(false).entrySet()) {
-                FactionPlayer               fp;
-                
-                fp = new FactionPlayer();
-                fp.faction = f;
-                fp.name = en.getKey();
-                fp.rank = (Integer)en.getValue();
-                f.players.put(en.getKey(), fp);
+            if (cfg_players != null) {
+                for (Entry<String, Object> en : cfg_players.getValues(false).entrySet()) {
+                    FactionPlayer               fp;
+
+                    fp = new FactionPlayer();
+                    fp.faction = f;
+                    fp.name = en.getKey();
+                    fp.rank = (Integer)en.getValue();
+                    f.players.put(en.getKey(), fp);
+                }
             }
             
             cfg_walocs = cfg_root.getConfigurationSection("walocs");
             f.walocs = new HashSet<WorldAnchorLocation>();
             
-            for (String key : cfg_walocs.getKeys(false)) {
-                ConfigurationSection        _cs;
-                WorldAnchorLocation         waloc;
-                
-                _cs = cfg_walocs.getConfigurationSection(key);
-                waloc = new WorldAnchorLocation();
-                waloc.x = _cs.getInt("x");
-                waloc.y = _cs.getInt("y");
-                waloc.z = _cs.getInt("z");
-                waloc.byWho = _cs.getString("byWho");
-                waloc.timePlaced = _cs.getLong("timePlaced");
-                f.walocs.add(waloc);
+            if (cfg_walocs != null) {
+                for (String key : cfg_walocs.getKeys(false)) {
+                    ConfigurationSection        _cs;
+                    WorldAnchorLocation         waloc;
+
+                    _cs = cfg_walocs.getConfigurationSection(key);
+                    waloc = new WorldAnchorLocation();
+                    waloc.x = _cs.getInt("x");
+                    waloc.y = _cs.getInt("y");
+                    waloc.z = _cs.getInt("z");
+                    waloc.w = _cs.getString("world");
+                    waloc.byWho = _cs.getString("byWho");
+                    waloc.timePlaced = _cs.getLong("timePlaced");
+                    f.walocs.add(waloc);
+                }
             }
             
-            
             cfg_zapin = cfg_root.getConfigurationSection("zappersIncoming");
-            for (String key : cfg_zapin.getKeys(false)) {
-                ConfigurationSection        _cs;
-                ZapEntry                    ze;
-                
-                _cs = cfg_walocs.getConfigurationSection(key);
-                ze = new ZapEntry();
+            if (cfg_zapin != null) {
+                for (String key : cfg_zapin.getKeys(false)) {
+                    ConfigurationSection        _cs;
+
+                    _cs = cfg_walocs.getConfigurationSection(key);
+                    zaps.add(_cs);
+                }
             }
             
             cfg_zapout = cfg_root.getConfigurationSection("zappersOutgoing");
+            if (cfg_zapout != null) {
+                for (String key : cfg_zapout.getKeys(false)) {
+                    ConfigurationSection        _cs;
+
+                    _cs = cfg_walocs.getConfigurationSection(key);
+                    // these have to be done last once we have all the faction
+                    // objects loaded into memory so we can lookup the faction
+                    // specified by the zap entry structure
+                    zaps.add(_cs);
+                }            
+            }
             
             // access all the primitive value fields
             f.desc = cfg_root.getString("desc");
@@ -229,6 +264,34 @@ public class P extends JavaPlugin implements IFactionsProtection {
             f.peaceful = false;
             f.power = cfg_root.getDouble("power");
             f.worthEMC = cfg_root.getLong("worthEMC");
+            
+            allfactions.put(f.name, f);
+        }
+        
+        // iterate through the zaps
+        for (ConfigurationSection c_zap : zaps) {
+            ZapEntry            ze;
+            Faction             f_from, f_to;
+            
+            ze = new ZapEntry();
+            ze.amount = c_zap.getDouble("amount");
+            f_from = allfactions.get(c_zap.getString("from"));
+            f_to = allfactions.get(c_zap.getString("to"));
+            ze.from = f_from;
+            ze.to = f_to;
+            ze.isFake = c_zap.getBoolean("isFake");
+            ze.perTick = c_zap.getDouble("perTick");
+            ze.timeStart = c_zap.getLong("timeStart");
+            ze.timeTick = c_zap.getLong("timeTick");
+            
+            f_from.zappersOutgoing.add(ze);
+            f_to.zappersIncoming.add(ze);
+        }
+        
+        try {
+            _DumpHumanReadableData(allfactions, new File("test.yml"));
+        } catch (Exception ex) {
+            ex.printStackTrace();
         }
     }
     
@@ -257,22 +320,21 @@ public class P extends JavaPlugin implements IFactionsProtection {
         return new String(cb, 0, z);
     }
     
-    public void DumpHumanReadableData() throws FileNotFoundException, IOException {
-        // .factions
-        //      .FireClan
-        //          .land
-        //              3:4
-        //              2:1
-        //              5:6
-        //            .
+    public void DumpHumanReadableData(File file) throws FileNotFoundException, IOException {
+        _DumpHumanReadableData(factions, file);
+    }
+    
+    public void _DumpHumanReadableData(Map<String, Faction> allfactions, File file) throws FileNotFoundException, IOException {
         RandomAccessFile                raf;
         Faction                         f;
         String                          fname;
         int                             j;
         
-        raf = new RandomAccessFile(fdata, "rw");
+        
+        raf = new RandomAccessFile(file, "rw");
+        raf.setLength(0);
             
-        for (Entry<String, Faction> ef : factions.entrySet()) {
+        for (Entry<String, Faction> ef : allfactions.entrySet()) {
             // TestFaction:
             f = ef.getValue();
             fname = sanitizeString(f.name);
@@ -302,6 +364,7 @@ public class P extends JavaPlugin implements IFactionsProtection {
                 // tid (loop)
                 // tidu (loop)
                 raf.writeBytes(String.format("  c%d_%d:\n", chk.x, chk.z));
+                raf.writeBytes(String.format("   worldName: %s\n", chk.worldName));
                 raf.writeBytes(String.format("   mru: %d\n", chk.mru));
                 raf.writeBytes(String.format("   mrb: %d\n", chk.mrb));
                 raf.writeBytes("   tid:\n");
@@ -356,7 +419,7 @@ public class P extends JavaPlugin implements IFactionsProtection {
             raf.writeBytes(" walocs:\n");
             j = 0;
             for (WorldAnchorLocation wal : f.walocs) {
-                raf.writeBytes(String.format("  %d:", j++));
+                raf.writeBytes(String.format("  %d:\n", j++));
                 raf.writeBytes(String.format("   byWho: %s\n", wal.byWho));
                 raf.writeBytes(String.format("   timePlaced: %d\n", wal.timePlaced));
                 raf.writeBytes(String.format("   world: %s\n", wal.w));
@@ -386,13 +449,13 @@ public class P extends JavaPlugin implements IFactionsProtection {
                 
                 j = 0;
                 for (ZapEntry ze : f.zappersIncoming) {
-                    raf.writeBytes(String.format("  %d:", j++));
+                    raf.writeBytes(String.format("  %d:\n", j++));
                     // amount double
                     raf.writeBytes(String.format("   amount: %f\n", ze.amount));
                     // from
                     raf.writeBytes(String.format("   from: %s\n", ze.from.name));
                     // isFake boolean
-                    raf.writeBytes(String.format("   isFake: %d:\n", ze.isFake));
+                    raf.writeBytes(String.format("   isFake: %b:\n", ze.isFake));
                     // perTick boolean
                     raf.writeBytes(String.format("   perTick: %f:\n", ze.perTick));
                     // timeStart long 
@@ -537,7 +600,7 @@ public class P extends JavaPlugin implements IFactionsProtection {
         this.getServer().getPluginManager().registerEvents(new PlayerHook(this), this);
 
         try {
-            DumpHumanReadableData();
+            DumpHumanReadableData(fdata);
             LoadHumanReadableData();
         } catch (Exception ex) {
             ex.printStackTrace();
