@@ -105,6 +105,31 @@ public class P extends JavaPlugin implements IFactionsProtection {
         }
     }
     
+    public String sanitizeString(String in) {
+        char[]                          cb;
+        String                          ac;
+        int                             y;
+        int                             z;
+        
+        ac = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_";
+        z = 0;
+        
+        cb = new char[in.length()];
+        
+        for (int x = 0; x < in.length(); ++x) {
+            for (y = 0; y < ac.length(); ++y) {
+                if (in.charAt(x) == ac.charAt(y)) {
+                    break;
+                }
+            }
+            if (y < ac.length()) {
+                cb[z++] = in.charAt(x);
+            }
+        }
+        
+        return new String(cb, 0, z);
+    }
+    
     public void DumpHumanReadableData() throws FileNotFoundException, IOException {
         // .factions
         //      .FireClan
@@ -115,25 +140,30 @@ public class P extends JavaPlugin implements IFactionsProtection {
         //            .
         RandomAccessFile                raf;
         Faction                         f;
+        String                          fname;
         
         raf = new RandomAccessFile(fdata, "rw");
             
         for (Entry<String, Faction> ef : factions.entrySet()) {
             // TestFaction:
             f = ef.getValue();
-            raf.writeBytes(String.format("%s:\n", f.name));
-            // members/players
-            raf.writeBytes("\tplayers:\n");
-            for (Entry<String, FactionPlayer> p : f.players.entrySet()) {
-                raf.writeBytes(String.format("\t\t%s: %d\n", p.getKey(), p.getValue().rank));                
+            fname = sanitizeString(f.name);
+            if (fname.length() == 0) {
+                continue;
             }
-            raf.writeBytes("\tfriends:\n");
+            raf.writeBytes(String.format("%s:\n", fname));
+            // members/players
+            raf.writeBytes(" players:\n");
+            for (Entry<String, FactionPlayer> p : f.players.entrySet()) {
+                raf.writeBytes(String.format("  %s: %d\n", p.getKey(), p.getValue().rank));                
+            }
+            raf.writeBytes(" friends:\n");
             if (f.friends != null) {
                 for (Entry<String, Integer> fr : f.friends.entrySet()) {
-                    raf.writeBytes(String.format("\t\t%s: %d\n", fr.getKey(), fr.getValue()));
+                    raf.writeBytes(String.format("  %s: %d\n", fr.getKey(), fr.getValue()));
                 }
             }
-            raf.writeBytes("\tchunks:\n");
+            raf.writeBytes(" chunks:\n");
             for (Entry<Long, FactionChunk> fc : f.chunks.entrySet()) {
                 FactionChunk        chk;
                 
@@ -143,68 +173,74 @@ public class P extends JavaPlugin implements IFactionsProtection {
                 // mrb (done)
                 // tid (loop)
                 // tidu (loop)
-                raf.writeBytes(String.format("\t\t%d_%d:\n", chk.x, chk.z));
-                raf.writeBytes(String.format("\t\t\tmru: %d\n", chk.mru));
-                raf.writeBytes(String.format("\t\t\tmrb: %d\n", chk.mrb));
-                raf.writeBytes("\t\t\ttid:\n");
+                raf.writeBytes(String.format("  c%d_%d:\n", chk.x, chk.z));
+                raf.writeBytes(String.format("   mru: %d\n", chk.mru));
+                raf.writeBytes(String.format("   mrb: %d\n", chk.mrb));
+                raf.writeBytes("   tid:\n");
                 if (chk.tid != null) {
                     for (Entry<TypeDataID, Integer> e : chk.tid.entrySet()) {
-                        raf.writeBytes(String.format("\t\t\t\t%d: %d\n", e.getKey().typeId, e.getValue()));
+                        raf.writeBytes(String.format("    %d: %d\n", e.getKey().typeId, e.getValue()));
                     }
                 }
-                raf.writeBytes("\t\t\ttidu:\n");
+                raf.writeBytes("   tidu:\n");
                 if (chk.tidu != null) {
                     for (Entry<TypeDataID, Integer> e : chk.tidu.entrySet()) {
-                        raf.writeBytes(String.format("\t\t\t\t%d: %d\n", e.getKey().typeId, e.getValue()));
+                        raf.writeBytes(String.format("    %d: %d\n", e.getKey().typeId, e.getValue()));
                     }
                 }
             }
             // desc
-            raf.writeBytes(String.format("\tdesc: %s\n", f.desc));
+            raf.writeBytes(String.format(" desc: %s\n", f.desc));
             // flags
-            raf.writeBytes(String.format("\tflags: %d\n", f.flags));
+            raf.writeBytes(String.format(" flags: %d\n", f.flags));
             // hw, hx, hy, hz
-            raf.writeBytes(String.format("\thw: %s\n", f.hw));
-            raf.writeBytes(String.format("\thx: %f\n", f.hx));
-            raf.writeBytes(String.format("\thy: %f\n", f.hy));
-            raf.writeBytes(String.format("\thz: %f\n", f.hz));
+            raf.writeBytes(String.format(" hw: %s\n", f.hw));
+            raf.writeBytes(String.format(" hx: %f\n", f.hx));
+            raf.writeBytes(String.format(" hy: %f\n", f.hy));
+            raf.writeBytes(String.format(" hz: %f\n", f.hz));
             // invitations
-            raf.writeBytes(String.format("\tinvites:\n"));
+            raf.writeBytes(String.format(" invites:\n"));
             if (f.invites != null) {
                 for (String inv : f.invites) {
-                    raf.writeBytes(String.format("\t\t- %s\n", inv));
+                    inv = sanitizeString(inv);
+                    if (inv.length() == 0) {
+                        continue;
+                    }
+                    raf.writeBytes(String.format("  - %s\n", inv));
                 }
             }
             // lpud
-            raf.writeBytes(String.format("\tlpud: %d\n", f.lpud));
+            raf.writeBytes(String.format(" lpud: %d\n", f.lpud));
             // mrc
-            raf.writeBytes(String.format("\tmrc: %d\n", f.mrc));
+            raf.writeBytes(String.format(" mrc: %d\n", f.mrc));
             // mri
-            raf.writeBytes(String.format("\tmri: %d\n", f.mri));
+            raf.writeBytes(String.format(" mri: %d\n", f.mri));
             // mrsh
-            raf.writeBytes(String.format("\tmrsh: %d\n", f.mrsh));
+            raf.writeBytes(String.format(" mrsh: %d\n", f.mrsh));
             // mrtp
-            raf.writeBytes(String.format("\tmrtp: %d\n", (int)f.mrtp));
+            raf.writeBytes(String.format(" mrtp: %d\n", (int)f.mrtp));
             // mrz
-            raf.writeBytes(String.format("\tmrz: %d\n", (int)f.mrz));
+            raf.writeBytes(String.format(" mrz: %d\n", (int)f.mrz));
             // name (already used for root key name)
             // power
-            raf.writeBytes(String.format("\tpower: %f\n", f.power));
+            raf.writeBytes(String.format(" power: %f\n", f.power));
             
-            raf.writeBytes("\twalocs:\n");
+            raf.writeBytes(" walocs:\n");
             for (WorldAnchorLocation wal : f.walocs) {
-                raf.writeBytes(String.format("\t\tbyWho: %s\n", wal.byWho));
-                raf.writeBytes(String.format("\t\ttimePlaced: %d\n", wal.timePlaced));
-                raf.writeBytes(String.format("\t\tworld: %s\n", wal.w));
-                raf.writeBytes(String.format("\t\tx: %d\n", wal.x));
-                raf.writeBytes(String.format("\t\ty: %d\n", wal.y));
-                raf.writeBytes(String.format("\t\tz: %d\n", wal.z));
+                raf.writeBytes(String.format("  byWho: %s\n", wal.byWho));
+                raf.writeBytes(String.format("  timePlaced: %d\n", wal.timePlaced));
+                raf.writeBytes(String.format("  world: %s\n", wal.w));
+                raf.writeBytes(String.format("  x: %d\n", wal.x));
+                raf.writeBytes(String.format("  y: %d\n", wal.y));
+                raf.writeBytes(String.format("  z: %d\n", wal.z));
             }
             // worthEMC
-            raf.writeBytes(String.format("\tworthEMC: %d\n", f.worthEMC));
+            raf.writeBytes(String.format(" worthEMC: %d\n", f.worthEMC));
             
             
             HashSet<ZapEntry>[]             zez;
+            String                          f_from;
+            String                          f_to;
             
             zez = new HashSet[2];
             
@@ -213,25 +249,27 @@ public class P extends JavaPlugin implements IFactionsProtection {
             
             for (HashSet<ZapEntry> hsze : zez) {
                 if (hsze == zez[0]) {
-                    raf.writeBytes("\tzappersIncoming:\n");
+                    raf.writeBytes(" zappersIncoming:\n");
                 } else {
-                    raf.writeBytes("\tzappersOutgoing:\n");
+                    raf.writeBytes(" zappersOutgoing:\n");
                 }
+                
+                
                 for (ZapEntry ze : f.zappersIncoming) {
                     // amount double
-                    raf.writeBytes(String.format("\t\tamount: %f\n", ze.amount));
+                    raf.writeBytes(String.format("  amount: %f\n", ze.amount));
                     // from
-                    raf.writeBytes(String.format("\t\tfrom: %s\n", ze.from.name));
+                    raf.writeBytes(String.format("  from: %s\n", ze.from.name));
                     // isFake boolean
-                    raf.writeBytes(String.format("\t\tisFake: %d:\n", ze.isFake));
+                    raf.writeBytes(String.format("  isFake: %d:\n", ze.isFake));
                     // perTick boolean
-                    raf.writeBytes(String.format("\t\tperTick: %f:\n", ze.perTick));
+                    raf.writeBytes(String.format("  perTick: %f:\n", ze.perTick));
                     // timeStart long 
-                    raf.writeBytes(String.format("\t\ttimeStart: %d\n", ze.timeStart));
+                    raf.writeBytes(String.format("  timeStart: %d\n", ze.timeStart));
                     // timeTick long
-                    raf.writeBytes(String.format("\t\ttimeTick: %d\n", ze.timeTick));
+                    raf.writeBytes(String.format("  timeTick: %d\n", ze.timeTick));
                     // to Faction
-                    raf.writeBytes(String.format("\t\tto: %s\n", ze.to.name));
+                    raf.writeBytes(String.format("  to: %s\n", ze.to.name));
                 }
             }
             // <end of loop>
@@ -1872,6 +1910,8 @@ public class P extends JavaPlugin implements IFactionsProtection {
             Faction               f;
             
             fp = getFactionPlayer(player.getName());
+            
+            args[1] = sanitizeString(args[1]);
             
             if (fp != null) {
                 player.sendMessage("§7[f] You must leave your current faction to create a new faction.");
