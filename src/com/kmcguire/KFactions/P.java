@@ -19,7 +19,9 @@ import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.InvalidConfigurationException;
+import org.bukkit.configuration.MemorySection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.craftbukkit.util.LongHash;
 import org.bukkit.entity.Entity;
@@ -85,7 +87,18 @@ public class P extends JavaPlugin implements IFactionsProtection {
     }
     
     public void LoadHumanReadableData() throws InvalidConfigurationException {
-        YamlConfiguration       cfg;
+        YamlConfiguration                   cfg;
+        ConfigurationSection                cfg_root;
+        ConfigurationSection                cfg_chunks;
+        ConfigurationSection                cfg_friends;
+        ConfigurationSection                cfg_invites;
+        ConfigurationSection                cfg_players;
+        ConfigurationSection                cfg_walocs;
+        ConfigurationSection                cfg_zapin;
+        ConfigurationSection                cfg_zapout;
+        Map<String, Object>                 m;
+        Faction                             f;
+        FactionChunk                        fc;
         
         cfg = new YamlConfiguration();
         
@@ -97,11 +110,125 @@ public class P extends JavaPlugin implements IFactionsProtection {
             return;
         }
         
-        Map<String, Object>         m;
         m = cfg.getValues(false);
         
         for (Entry<String, Object> e : m.entrySet()) {
-            getLogger().info(String.format("%s:%h", e.getKey(), e.getValue()));
+            getLogger().info(String.format("%s:%s", e.getKey(), e.getValue().getClass().getName()));
+            cfg_root = (ConfigurationSection)e.getValue();
+            
+            f = new Faction();
+            
+            // access all of the list/array/map type stuff
+            cfg_chunks = cfg_root.getConfigurationSection("chunks");
+            for (String key : cfg_chunks.getKeys(false)) {
+                ConfigurationSection        ccs;
+                ConfigurationSection        _ccs;
+                fc = new FactionChunk();
+                
+                fc.x = Integer.parseInt(key.substring(1, key.indexOf('_')));
+                fc.z = Integer.parseInt(key.substring(key.indexOf('_') + 1));
+                
+                fc.builders = null;
+                fc.users = null;
+                fc.faction = f;
+                
+                ccs = cfg_chunks.getConfigurationSection(key);
+                fc.mru = ccs.getInt("mru");
+                fc.mrb = ccs.getInt("mrb");
+                
+                _ccs = ccs.getConfigurationSection("tid");
+                fc.tid = new HashMap<TypeDataID, Integer>();
+                
+                for (Entry<String, Object> en : _ccs.getValues(false).entrySet()) {
+                    TypeDataID          tid;
+                    
+                    tid = new TypeDataID();
+                    tid.typeId = Integer.parseInt(en.getKey());
+                    tid.dataId = 0;
+                    fc.tid.put(tid, (Integer)en.getValue());
+                }
+                
+                _ccs = ccs.getConfigurationSection("tidu");
+                fc.tidu = new HashMap<TypeDataID, Integer>();
+                
+                for (Entry<String, Object> en : _ccs.getValues(false).entrySet()) {
+                    TypeDataID          tid;
+                    
+                    tid = new TypeDataID();
+                    tid.typeId = Integer.parseInt(en.getKey());
+                    tid.dataId = 0;
+                    fc.tid.put(tid, (Integer)en.getValue());
+                }
+            }
+            cfg_friends = cfg_root.getConfigurationSection("friends");
+            
+            f.friends = new HashMap<String, Integer>();
+            for (Entry<String, Object> en : cfg_friends.getValues(false).entrySet()) {
+                f.friends.put(en.getKey(), (Integer)en.getValue());
+            }
+            
+            cfg_invites = cfg_root.getConfigurationSection("invites");
+            f.invites = new HashSet<String>();
+            
+            cfg_players = cfg_root.getConfigurationSection("players");
+            f.players = new HashMap<String, FactionPlayer>();
+            
+            for (Entry<String, Object> en : cfg_players.getValues(false).entrySet()) {
+                FactionPlayer               fp;
+                
+                fp = new FactionPlayer();
+                fp.faction = f;
+                fp.name = en.getKey();
+                fp.rank = (Integer)en.getValue();
+                f.players.put(en.getKey(), fp);
+            }
+            
+            cfg_walocs = cfg_root.getConfigurationSection("walocs");
+            f.walocs = new HashSet<WorldAnchorLocation>();
+            
+            for (String key : cfg_walocs.getKeys(false)) {
+                ConfigurationSection        _cs;
+                WorldAnchorLocation         waloc;
+                
+                _cs = cfg_walocs.getConfigurationSection(key);
+                waloc = new WorldAnchorLocation();
+                waloc.x = _cs.getInt("x");
+                waloc.y = _cs.getInt("y");
+                waloc.z = _cs.getInt("z");
+                waloc.byWho = _cs.getString("byWho");
+                waloc.timePlaced = _cs.getLong("timePlaced");
+                f.walocs.add(waloc);
+            }
+            
+            
+            cfg_zapin = cfg_root.getConfigurationSection("zappersIncoming");
+            for (String key : cfg_zapin.getKeys(false)) {
+                ConfigurationSection        _cs;
+                ZapEntry                    ze;
+                
+                _cs = cfg_walocs.getConfigurationSection(key);
+                ze = new ZapEntry();
+            }
+            
+            cfg_zapout = cfg_root.getConfigurationSection("zappersOutgoing");
+            
+            // access all the primitive value fields
+            f.desc = cfg_root.getString("desc");
+            f.flags = cfg_root.getInt("flags");
+            f.hw = cfg_root.getString("hw");
+            f.hx = cfg_root.getDouble("hx");
+            f.hy = cfg_root.getDouble("hy");
+            f.hz = cfg_root.getDouble("hz");
+            f.lpud = cfg_root.getLong("lpud");
+            f.mrc = cfg_root.getInt("mrc");
+            f.mri = cfg_root.getInt("mri");
+            f.mrsh = cfg_root.getInt("mrsh");
+            f.mrtp = cfg_root.getInt("mrtp");
+            f.mrz = cfg_root.getInt("mrz");
+            f.name = e.getKey();
+            f.peaceful = false;
+            f.power = cfg_root.getDouble("power");
+            f.worthEMC = cfg_root.getLong("worthEMC");
         }
     }
     
@@ -141,6 +268,7 @@ public class P extends JavaPlugin implements IFactionsProtection {
         RandomAccessFile                raf;
         Faction                         f;
         String                          fname;
+        int                             j;
         
         raf = new RandomAccessFile(fdata, "rw");
             
@@ -226,13 +354,15 @@ public class P extends JavaPlugin implements IFactionsProtection {
             raf.writeBytes(String.format(" power: %f\n", f.power));
             
             raf.writeBytes(" walocs:\n");
+            j = 0;
             for (WorldAnchorLocation wal : f.walocs) {
-                raf.writeBytes(String.format("  byWho: %s\n", wal.byWho));
-                raf.writeBytes(String.format("  timePlaced: %d\n", wal.timePlaced));
-                raf.writeBytes(String.format("  world: %s\n", wal.w));
-                raf.writeBytes(String.format("  x: %d\n", wal.x));
-                raf.writeBytes(String.format("  y: %d\n", wal.y));
-                raf.writeBytes(String.format("  z: %d\n", wal.z));
+                raf.writeBytes(String.format("  %d:", j++));
+                raf.writeBytes(String.format("   byWho: %s\n", wal.byWho));
+                raf.writeBytes(String.format("   timePlaced: %d\n", wal.timePlaced));
+                raf.writeBytes(String.format("   world: %s\n", wal.w));
+                raf.writeBytes(String.format("   x: %d\n", wal.x));
+                raf.writeBytes(String.format("   y: %d\n", wal.y));
+                raf.writeBytes(String.format("   z: %d\n", wal.z));
             }
             // worthEMC
             raf.writeBytes(String.format(" worthEMC: %d\n", f.worthEMC));
@@ -254,22 +384,23 @@ public class P extends JavaPlugin implements IFactionsProtection {
                     raf.writeBytes(" zappersOutgoing:\n");
                 }
                 
-                
+                j = 0;
                 for (ZapEntry ze : f.zappersIncoming) {
+                    raf.writeBytes(String.format("  %d:", j++));
                     // amount double
-                    raf.writeBytes(String.format("  amount: %f\n", ze.amount));
+                    raf.writeBytes(String.format("   amount: %f\n", ze.amount));
                     // from
-                    raf.writeBytes(String.format("  from: %s\n", ze.from.name));
+                    raf.writeBytes(String.format("   from: %s\n", ze.from.name));
                     // isFake boolean
-                    raf.writeBytes(String.format("  isFake: %d:\n", ze.isFake));
+                    raf.writeBytes(String.format("   isFake: %d:\n", ze.isFake));
                     // perTick boolean
-                    raf.writeBytes(String.format("  perTick: %f:\n", ze.perTick));
+                    raf.writeBytes(String.format("   perTick: %f:\n", ze.perTick));
                     // timeStart long 
-                    raf.writeBytes(String.format("  timeStart: %d\n", ze.timeStart));
+                    raf.writeBytes(String.format("   timeStart: %d\n", ze.timeStart));
                     // timeTick long
-                    raf.writeBytes(String.format("  timeTick: %d\n", ze.timeTick));
+                    raf.writeBytes(String.format("   timeTick: %d\n", ze.timeTick));
                     // to Faction
-                    raf.writeBytes(String.format("  to: %s\n", ze.to.name));
+                    raf.writeBytes(String.format("   to: %s\n", ze.to.name));
                 }
             }
             // <end of loop>

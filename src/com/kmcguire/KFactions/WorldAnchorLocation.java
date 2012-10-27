@@ -14,6 +14,10 @@ public class WorldAnchorLocation implements Serializable {
         timePlaced = System.currentTimeMillis();
     }
     
+    public WorldAnchorLocation() {
+        
+    }
+    
     public int          x;
     public int          y;
     public int          z;
