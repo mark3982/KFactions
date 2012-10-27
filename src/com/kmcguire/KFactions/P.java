@@ -7,7 +7,6 @@ package com.kmcguire.KFactions;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.RandomAccessFile;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -20,6 +19,8 @@ import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.InvalidConfigurationException;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.craftbukkit.util.LongHash;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Item;
@@ -60,6 +61,7 @@ class DataDumper implements Runnable {
 public class P extends JavaPlugin implements IFactionsProtection {
     public Map<String, Faction>        factions;
     private boolean                    saveToDisk;
+    public static final File           fdata;
     
     static final int    NOPVP =        0x01;
     static final int    NOBOOM =       0x02;
@@ -74,14 +76,36 @@ public class P extends JavaPlugin implements IFactionsProtection {
     
     public static P     __ehook;
     
+    static {
+        fdata = new File("kfactions.data.yml");
+    }
+    
     public P() {        
         __ehook = this;
     }
     
-    public void LoadHumanReadableData() {
+    public void LoadHumanReadableData() throws InvalidConfigurationException {
+        YamlConfiguration       cfg;
+        
+        cfg = new YamlConfiguration();
+        
+        try {
+            cfg.load(fdata);
+        } catch (FileNotFoundException ex) {
+            return;
+        } catch (IOException ex) {
+            return;
+        }
+        
+        Map<String, Object>         m;
+        m = cfg.getValues(false);
+        
+        for (Entry<String, Object> e : m.entrySet()) {
+            getLogger().info(String.format("%s:%h", e.getKey(), e.getValue()));
+        }
     }
     
-    public void DumpHumanReadableData() {
+    public void DumpHumanReadableData() throws FileNotFoundException, IOException {
         // .factions
         //      .FireClan
         //          .land
@@ -89,6 +113,131 @@ public class P extends JavaPlugin implements IFactionsProtection {
         //              2:1
         //              5:6
         //            .
+        RandomAccessFile                raf;
+        Faction                         f;
+        
+        raf = new RandomAccessFile(fdata, "rw");
+            
+        for (Entry<String, Faction> ef : factions.entrySet()) {
+            // TestFaction:
+            f = ef.getValue();
+            raf.writeBytes(String.format("%s:\n", f.name));
+            // members/players
+            raf.writeBytes("\tplayers:\n");
+            for (Entry<String, FactionPlayer> p : f.players.entrySet()) {
+                raf.writeBytes(String.format("\t\t%s: %d\n", p.getKey(), p.getValue().rank));                
+            }
+            raf.writeBytes("\tfriends:\n");
+            if (f.friends != null) {
+                for (Entry<String, Integer> fr : f.friends.entrySet()) {
+                    raf.writeBytes(String.format("\t\t%s: %d\n", fr.getKey(), fr.getValue()));
+                }
+            }
+            raf.writeBytes("\tchunks:\n");
+            for (Entry<Long, FactionChunk> fc : f.chunks.entrySet()) {
+                FactionChunk        chk;
+                
+                chk = fc.getValue();
+                
+                // mru (done)
+                // mrb (done)
+                // tid (loop)
+                // tidu (loop)
+                raf.writeBytes(String.format("\t\t%d_%d:\n", chk.x, chk.z));
+                raf.writeBytes(String.format("\t\t\tmru: %d\n", chk.mru));
+                raf.writeBytes(String.format("\t\t\tmrb: %d\n", chk.mrb));
+                raf.writeBytes("\t\t\ttid:\n");
+                if (chk.tid != null) {
+                    for (Entry<TypeDataID, Integer> e : chk.tid.entrySet()) {
+                        raf.writeBytes(String.format("\t\t\t\t%d: %d\n", e.getKey().typeId, e.getValue()));
+                    }
+                }
+                raf.writeBytes("\t\t\ttidu:\n");
+                if (chk.tidu != null) {
+                    for (Entry<TypeDataID, Integer> e : chk.tidu.entrySet()) {
+                        raf.writeBytes(String.format("\t\t\t\t%d: %d\n", e.getKey().typeId, e.getValue()));
+                    }
+                }
+            }
+            // desc
+            raf.writeBytes(String.format("\tdesc: %s\n", f.desc));
+            // flags
+            raf.writeBytes(String.format("\tflags: %d\n", f.flags));
+            // hw, hx, hy, hz
+            raf.writeBytes(String.format("\thw: %s\n", f.hw));
+            raf.writeBytes(String.format("\thx: %f\n", f.hx));
+            raf.writeBytes(String.format("\thy: %f\n", f.hy));
+            raf.writeBytes(String.format("\thz: %f\n", f.hz));
+            // invitations
+            raf.writeBytes(String.format("\tinvites:\n"));
+            if (f.invites != null) {
+                for (String inv : f.invites) {
+                    raf.writeBytes(String.format("\t\t- %s\n", inv));
+                }
+            }
+            // lpud
+            raf.writeBytes(String.format("\tlpud: %d\n", f.lpud));
+            // mrc
+            raf.writeBytes(String.format("\tmrc: %d\n", f.mrc));
+            // mri
+            raf.writeBytes(String.format("\tmri: %d\n", f.mri));
+            // mrsh
+            raf.writeBytes(String.format("\tmrsh: %d\n", f.mrsh));
+            // mrtp
+            raf.writeBytes(String.format("\tmrtp: %d\n", (int)f.mrtp));
+            // mrz
+            raf.writeBytes(String.format("\tmrz: %d\n", (int)f.mrz));
+            // name (already used for root key name)
+            // power
+            raf.writeBytes(String.format("\tpower: %f\n", f.power));
+            
+            raf.writeBytes("\twalocs:\n");
+            for (WorldAnchorLocation wal : f.walocs) {
+                raf.writeBytes(String.format("\t\tbyWho: %s\n", wal.byWho));
+                raf.writeBytes(String.format("\t\ttimePlaced: %d\n", wal.timePlaced));
+                raf.writeBytes(String.format("\t\tworld: %s\n", wal.w));
+                raf.writeBytes(String.format("\t\tx: %d\n", wal.x));
+                raf.writeBytes(String.format("\t\ty: %d\n", wal.y));
+                raf.writeBytes(String.format("\t\tz: %d\n", wal.z));
+            }
+            // worthEMC
+            raf.writeBytes(String.format("\tworthEMC: %d\n", f.worthEMC));
+            
+            
+            HashSet<ZapEntry>[]             zez;
+            
+            zez = new HashSet[2];
+            
+            zez[0] = f.zappersIncoming;
+            zez[1] = f.zappersOutgoing;
+            
+            for (HashSet<ZapEntry> hsze : zez) {
+                if (hsze == zez[0]) {
+                    raf.writeBytes("\tzappersIncoming:\n");
+                } else {
+                    raf.writeBytes("\tzappersOutgoing:\n");
+                }
+                for (ZapEntry ze : f.zappersIncoming) {
+                    // amount double
+                    raf.writeBytes(String.format("\t\tamount: %f\n", ze.amount));
+                    // from
+                    raf.writeBytes(String.format("\t\tfrom: %s\n", ze.from.name));
+                    // isFake boolean
+                    raf.writeBytes(String.format("\t\tisFake: %d:\n", ze.isFake));
+                    // perTick boolean
+                    raf.writeBytes(String.format("\t\tperTick: %f:\n", ze.perTick));
+                    // timeStart long 
+                    raf.writeBytes(String.format("\t\ttimeStart: %d\n", ze.timeStart));
+                    // timeTick long
+                    raf.writeBytes(String.format("\t\ttimeTick: %d\n", ze.timeTick));
+                    // to Faction
+                    raf.writeBytes(String.format("\t\tto: %s\n", ze.to.name));
+                }
+            }
+            // <end of loop>
+        }
+        
+        return;
     }
     
     public int getEMC(int tid, int did) {
@@ -218,6 +367,13 @@ public class P extends JavaPlugin implements IFactionsProtection {
         this.getServer().getPluginManager().registerEvents(new EntityHook(this), this);
         this.getServer().getPluginManager().registerEvents(new PlayerHook(this), this);
 
+        try {
+            DumpHumanReadableData();
+            LoadHumanReadableData();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        } 
+        
         // let faction objects initialize anything <new> .. LOL like new fields
         Iterator<Entry<String, Faction>>            fe;
         Faction                                     f;
