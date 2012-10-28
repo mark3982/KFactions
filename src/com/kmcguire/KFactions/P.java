@@ -49,7 +49,8 @@ class DataDumper implements Runnable {
     public void run() {
         synchronized(p) {
             try {
-                SLAPI.save(p.factions, "plugin.data.factions");
+                //SLAPI.save(p.factions, "plugin.data.factions");
+                p.DumpHumanReadableData();
                 p.smsg("saved data to disk");
             } catch (Exception e) {
                 p.smsg("error when trying to save data to disk");
@@ -86,7 +87,7 @@ public class P extends JavaPlugin implements IFactionsProtection {
         __ehook = this;
     }
     
-    public void LoadHumanReadableData() throws InvalidConfigurationException {
+    public Map<String, Faction> LoadHumanReadableData() throws InvalidConfigurationException {
         YamlConfiguration                   cfg;
         ConfigurationSection                cfg_root;
         ConfigurationSection                cfg_chunks;
@@ -105,13 +106,13 @@ public class P extends JavaPlugin implements IFactionsProtection {
         zaps = new LinkedList<ConfigurationSection>();
         cfg = new YamlConfiguration();
         allfactions = new HashMap<String, Faction>();
-        
+
         try {
             cfg.load(fdata);
         } catch (FileNotFoundException ex) {
-            return;
+            return null;
         } catch (IOException ex) {
-            return;
+            return null;
         }
         
         m = cfg.getValues(false);
@@ -229,7 +230,7 @@ public class P extends JavaPlugin implements IFactionsProtection {
                 for (String key : cfg_zapin.getKeys(false)) {
                     ConfigurationSection        _cs;
 
-                    _cs = cfg_walocs.getConfigurationSection(key);
+                    _cs = cfg_zapin.getConfigurationSection(key);
                     zaps.add(_cs);
                 }
             }
@@ -239,7 +240,7 @@ public class P extends JavaPlugin implements IFactionsProtection {
                 for (String key : cfg_zapout.getKeys(false)) {
                     ConfigurationSection        _cs;
 
-                    _cs = cfg_walocs.getConfigurationSection(key);
+                    _cs = cfg_zapout.getConfigurationSection(key);
                     // these have to be done last once we have all the faction
                     // objects loaded into memory so we can lookup the faction
                     // specified by the zap entry structure
@@ -288,11 +289,13 @@ public class P extends JavaPlugin implements IFactionsProtection {
             f_to.zappersIncoming.add(ze);
         }
         
-        try {
-            _DumpHumanReadableData(allfactions, new File("test.yml"));
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
+        //try {
+        //    _DumpHumanReadableData(allfactions, new File("test.yml"));
+        //} catch (Exception ex) {
+        //    ex.printStackTrace();
+        //}
+        
+        return allfactions;
     }
     
     public String sanitizeString(String in) {
@@ -318,6 +321,10 @@ public class P extends JavaPlugin implements IFactionsProtection {
         }
         
         return new String(cb, 0, z);
+    }
+    
+    public void DumpHumanReadableData() throws FileNotFoundException, IOException {
+        _DumpHumanReadableData(factions, fdata);
     }
     
     public void DumpHumanReadableData(File file) throws FileNotFoundException, IOException {
@@ -455,9 +462,9 @@ public class P extends JavaPlugin implements IFactionsProtection {
                     // from
                     raf.writeBytes(String.format("   from: %s\n", ze.from.name));
                     // isFake boolean
-                    raf.writeBytes(String.format("   isFake: %b:\n", ze.isFake));
+                    raf.writeBytes(String.format("   isFake: %b\n", ze.isFake));
                     // perTick boolean
-                    raf.writeBytes(String.format("   perTick: %f:\n", ze.perTick));
+                    raf.writeBytes(String.format("   perTick: %f\n", ze.perTick));
                     // timeStart long 
                     raf.writeBytes(String.format("   timeStart: %d\n", ze.timeStart));
                     // timeTick long
@@ -570,17 +577,18 @@ public class P extends JavaPlugin implements IFactionsProtection {
         saveToDisk = true;
         if (file.exists()) {
             try {
-                factions = (HashMap<String, Faction>)SLAPI.load("plugin.data.factions");
-                Iterator<Entry<String, Faction>>        fi;
-                Faction                                 f;
-                
-                fi = factions.entrySet().iterator();
-                smsg("loaded data from disk");
-                //while (fi.hasNext()) {
-                //    f = fi.next().getValue();
-                //    smsg(String.format("object:%x int:%d", f.test, f.test2));
-                //}
-                
+            //    factions = (HashMap<String, Faction>)SLAPI.load("plugin.data.factions");
+            //    Iterator<Entry<String, Faction>>        fi;
+            //    Faction                                 f;
+            //    
+            //    fi = factions.entrySet().iterator();
+            //    smsg("loaded data from disk");
+            //    //while (fi.hasNext()) {
+            //    //    f = fi.next().getValue();
+            //    //    smsg(String.format("object:%x int:%d", f.test, f.test2));
+            //    //}
+            //
+                factions = LoadHumanReadableData();
             } catch (Exception ex) {
                 factions = new HashMap<String, Faction>();
                 saveToDisk = false;
@@ -598,13 +606,6 @@ public class P extends JavaPlugin implements IFactionsProtection {
         this.getServer().getPluginManager().registerEvents(new BlockHook(this), this);
         this.getServer().getPluginManager().registerEvents(new EntityHook(this), this);
         this.getServer().getPluginManager().registerEvents(new PlayerHook(this), this);
-
-        try {
-            DumpHumanReadableData(fdata);
-            LoadHumanReadableData();
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        } 
         
         // let faction objects initialize anything <new> .. LOL like new fields
         Iterator<Entry<String, Faction>>            fe;
@@ -709,10 +710,12 @@ public class P extends JavaPlugin implements IFactionsProtection {
     @Override
     public void onDisable() {
         try {
-            if (saveToDisk)
-                SLAPI.save(factions, "plugin.data.factions");
-            else
+            if (saveToDisk) {
+                //SLAPI.save(factions, "plugin.data.factions");
+                DumpHumanReadableData();
+            } else {
                 getServer().getLogger().info("§7[f] save to disk was disabled..");
+            }
         } catch (Exception e) {
             getServer().getLogger().info("§7[f] unable to save data on disable");
             return;
