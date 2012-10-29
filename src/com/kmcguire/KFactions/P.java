@@ -108,17 +108,21 @@ public class P extends JavaPlugin implements IFactionsProtection {
         allfactions = new HashMap<String, Faction>();
 
         try {
+            getLogger().info("A");
             cfg.load(fdata);
+            getLogger().info("B");
         } catch (FileNotFoundException ex) {
             return null;
         } catch (IOException ex) {
             return null;
         }
         
+        getLogger().info(" - data loaded into memory; creating structures");
+        
         m = cfg.getValues(false);
         
         for (Entry<String, Object> e : m.entrySet()) {
-            getLogger().info(String.format("%s:%s", e.getKey(), e.getValue().getClass().getName()));
+            //getLogger().info(String.format("%s:%s", e.getKey(), e.getValue().getClass().getName()));
             cfg_root = (ConfigurationSection)e.getValue();
             
             f = new Faction();
@@ -127,7 +131,7 @@ public class P extends JavaPlugin implements IFactionsProtection {
             // access all of the list/array/map type stuff
             cfg_chunks = cfg_root.getConfigurationSection("chunks");
             if (cfg_chunks != null) {
-                getLogger().info("CHUNKS NOT NULL");
+                //getLogger().info("CHUNKS NOT NULL");
                 for (String key : cfg_chunks.getKeys(false)) {
                     ConfigurationSection        ccs;
                     ConfigurationSection        _ccs;
@@ -496,6 +500,7 @@ public class P extends JavaPlugin implements IFactionsProtection {
         // ensure that emcvals.txt exists
         femcvals = new File("kfactions.emcvals.txt");
         if (!femcvals.exists()) {
+            getLogger().info("writting new kfactions.emcvals.txt");
             try {
                 raf = new RandomAccessFile(femcvals, "rw");
                 i = EMCMap.emcMap.entrySet().iterator();
@@ -511,7 +516,7 @@ public class P extends JavaPlugin implements IFactionsProtection {
         
         // load from emcvals.txt
         emcMap = new HashMap<Long, Integer>();
-        
+        getLogger().info("reading kfaction.emcvals.txt");
         try {
             String      line;
             int         epos;
@@ -539,9 +544,11 @@ public class P extends JavaPlugin implements IFactionsProtection {
         }
         
         
+        
         // configuration
         landPowerCostPerHour = 8192.0 / 24.0 / 4.0;
 
+        getLogger().info("reading plugin.gspawn.factions");
         file = new File("plugin.gspawn.factions");
         gspawn = null;
         if (file.exists()) {
@@ -573,29 +580,40 @@ public class P extends JavaPlugin implements IFactionsProtection {
         }
         // IF DATA ON DISK LOAD FROM THAT OTHERWISE CREATE
         // A NEW DATA STRUCTURE FOR STORAGE 
-        file = new File("plugin.data.factions");
+        getLogger().info("reading faction data");
         saveToDisk = true;
+        file = new File("plugin.data.factions");
+        
+        // load from original data format until it no longer exists
         if (file.exists()) {
             try {
-            //    factions = (HashMap<String, Faction>)SLAPI.load("plugin.data.factions");
-            //    Iterator<Entry<String, Faction>>        fi;
-            //    Faction                                 f;
-            //    
-            //    fi = factions.entrySet().iterator();
-            //    smsg("loaded data from disk");
-            //    //while (fi.hasNext()) {
-            //    //    f = fi.next().getValue();
-            //    //    smsg(String.format("object:%x int:%d", f.test, f.test2));
-            //    //}
-            //
+                getLogger().info("loading from old data format");
+                factions = (HashMap<String, Faction>)SLAPI.load("plugin.data.factions");
+                getLogger().info(" - loaded");
+                getLogger().info(" - !backup! and !move! plugin.data.factions out of root directory");
+            } catch (Exception ex) {
+                factions = new HashMap<String, Faction>();
+                saveToDisk = false;
+                smsg("error when trying to load data from binary file on disk (SAVE TO DISK DISABLED)");
+                ex.printStackTrace();
+            }            
+        }
+        
+        // only load from if original data format file is missing
+        if (fdata.exists() && !file.exists()) {
+            try {
+                getLogger().info("reading now");
                 factions = LoadHumanReadableData();
             } catch (Exception ex) {
                 factions = new HashMap<String, Faction>();
                 saveToDisk = false;
-                smsg("error when trying to load data from disk (SAVE TO DISK DISABLED)");
+                smsg("error when trying to load data from YAML file on disk (SAVE TO DISK DISABLED)");
                 ex.printStackTrace();
             }
-        } else {
+        }
+        
+        // if both data sources do not exist
+        if (!fdata.exists() && !file.exists()) {
             factions = new HashMap<String, Faction>();
             smsg("found no data on disk creating new faction data");
         }
@@ -611,6 +629,7 @@ public class P extends JavaPlugin implements IFactionsProtection {
         Iterator<Entry<String, Faction>>            fe;
         Faction                                     f;
         
+        getLogger().info("ensuring faction data structures are properly initialized");
         fe = factions.entrySet().iterator();
         while (fe.hasNext()) {
             f = fe.next().getValue();
@@ -626,6 +645,7 @@ public class P extends JavaPlugin implements IFactionsProtection {
         
         final P       ___p;
         
+        getLogger().info("creating synchronous task");
         ___p = this;
         getServer().getScheduler().scheduleSyncRepeatingTask(this, new Runnable() {
             public P            p;
@@ -712,15 +732,18 @@ public class P extends JavaPlugin implements IFactionsProtection {
         try {
             if (saveToDisk) {
                 //SLAPI.save(factions, "plugin.data.factions");
+                getLogger().info("[debug] start data dump to disk");
                 DumpHumanReadableData();
+                getLogger().info("[debug] end data dump to disk");
+                getServer().getLogger().info("§7[f] saved data on disable");
             } else {
                 getServer().getLogger().info("§7[f] save to disk was disabled..");
             }
         } catch (Exception e) {
-            getServer().getLogger().info("§7[f] unable to save data on disable");
+            getServer().getLogger().info("§7[f] exception saving data on disable");
+            e.printStackTrace();
             return;
         }
-        getServer().getLogger().info("§7[f] saved data on disable");
     }
     
     public Faction getFactionByName(String factionName) {
