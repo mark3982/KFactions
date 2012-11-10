@@ -77,6 +77,8 @@ public class P extends JavaPlugin implements IFactionsProtection {
     
     public Location    gspawn = null;
     
+    public boolean      upgradeCatch;  
+    
     public static P     __ehook;
     
     static {
@@ -122,11 +124,10 @@ public class P extends JavaPlugin implements IFactionsProtection {
         m = cfg.getValues(false);
         
         for (Entry<String, Object> e : m.entrySet()) {
-            //getLogger().info(String.format("%s:%s", e.getKey(), e.getValue().getClass().getName()));
             cfg_root = (ConfigurationSection)e.getValue();
             
             f = new Faction();
-            f.chunks = new HashMap<Long, FactionChunk>();
+            f.chunks = new HashMap<String, Map<Long, FactionChunk>>();
             
             // access all of the list/array/map type stuff
             cfg_chunks = cfg_root.getConfigurationSection("chunks");
@@ -135,10 +136,18 @@ public class P extends JavaPlugin implements IFactionsProtection {
                 for (String key : cfg_chunks.getKeys(false)) {
                     ConfigurationSection        ccs;
                     ConfigurationSection        _ccs;
+                    int                         m1, m2, m3;
+                    
                     fc = new FactionChunk();
 
-                    fc.x = Integer.parseInt(key.substring(1, key.indexOf('_')));
-                    fc.z = Integer.parseInt(key.substring(key.indexOf('_') + 1));
+                    m1 = key.indexOf('*');
+                    m2 = key.indexOf('*', m1 + 1);
+                    
+                    //getLogger().info(String.format("key:%s", key));
+
+                    fc.worldName = key.substring(0, m1);
+                    fc.x = Integer.parseInt(key.substring(m1 + 1, m2));
+                    fc.z = Integer.parseInt(key.substring(m2 + 1));
                     
                     fc.builders = null;
                     fc.users = null;
@@ -147,7 +156,6 @@ public class P extends JavaPlugin implements IFactionsProtection {
                     ccs = cfg_chunks.getConfigurationSection(key);
                     fc.mru = ccs.getInt("mru");
                     fc.mrb = ccs.getInt("mrb");
-                    fc.worldName = ccs.getString("worldName");
                     
                     _ccs = ccs.getConfigurationSection("tid");
                     fc.tid = new HashMap<TypeDataID, Integer>();
@@ -176,7 +184,11 @@ public class P extends JavaPlugin implements IFactionsProtection {
                         }
                     }
                     
-                    f.chunks.put(getChunkLong(getServer().getWorld(fc.worldName), fc.x, fc.z), fc);
+                    if (f.chunks.get(fc.worldName) == null) {
+                        f.chunks.put(fc.worldName, new HashMap<Long, FactionChunk>());
+                    }
+                    
+                    f.chunks.get(fc.worldName).put(LongHash.toLong(fc.x, fc.z), fc);
                     //
                 }
             }
@@ -335,6 +347,28 @@ public class P extends JavaPlugin implements IFactionsProtection {
         _DumpHumanReadableData(factions, file);
     }
     
+    private void hrfWriteChunk(RandomAccessFile raf, FactionChunk chk) throws IOException {
+        // mru (done)
+        // mrb (done)
+        // tid (loop)
+        // tidu (loop)
+        raf.writeBytes(String.format("  %s*%d*%d:\n", chk.worldName, chk.x, chk.z));
+        raf.writeBytes(String.format("   mru: %d\n", chk.mru));
+        raf.writeBytes(String.format("   mrb: %d\n", chk.mrb));
+        raf.writeBytes("   tid:\n");
+        if (chk.tid != null) {
+            for (Entry<TypeDataID, Integer> e : chk.tid.entrySet()) {
+                raf.writeBytes(String.format("    %d: %d\n", e.getKey().typeId, e.getValue()));
+            }
+        }
+        raf.writeBytes("   tidu:\n");
+        if (chk.tidu != null) {
+            for (Entry<TypeDataID, Integer> e : chk.tidu.entrySet()) {
+                raf.writeBytes(String.format("    %d: %d\n", e.getKey().typeId, e.getValue()));
+            }
+        }
+    }
+    
     public void _DumpHumanReadableData(Map<String, Faction> allfactions, File file) throws FileNotFoundException, IOException {
         RandomAccessFile                raf;
         Faction                         f;
@@ -352,6 +386,7 @@ public class P extends JavaPlugin implements IFactionsProtection {
             if (fname.length() == 0) {
                 continue;
             }
+            //getLogger().info(String.format("dumping faction %s", fname));
             raf.writeBytes(String.format("%s:\n", fname));
             // members/players
             raf.writeBytes(" players:\n");
@@ -364,30 +399,37 @@ public class P extends JavaPlugin implements IFactionsProtection {
                     raf.writeBytes(String.format("  %s: %d\n", fr.getKey(), fr.getValue()));
                 }
             }
+            
             raf.writeBytes(" chunks:\n");
-            for (Entry<Long, FactionChunk> fc : f.chunks.entrySet()) {
-                FactionChunk        chk;
+            // if it is a String then it is the newer version
+            if (f.chunks != null && f.chunks.size() > 0) {
+                Map     map;
                 
-                chk = fc.getValue();
+                map = f.chunks;
                 
-                // mru (done)
-                // mrb (done)
-                // tid (loop)
-                // tidu (loop)
-                raf.writeBytes(String.format("  c%d_%d:\n", chk.x, chk.z));
-                raf.writeBytes(String.format("   worldName: %s\n", chk.worldName));
-                raf.writeBytes(String.format("   mru: %d\n", chk.mru));
-                raf.writeBytes(String.format("   mrb: %d\n", chk.mrb));
-                raf.writeBytes("   tid:\n");
-                if (chk.tid != null) {
-                    for (Entry<TypeDataID, Integer> e : chk.tid.entrySet()) {
-                        raf.writeBytes(String.format("    %d: %d\n", e.getKey().typeId, e.getValue()));
+                if (map.keySet().iterator().next().getClass().getName().equals("java.lang.String")) {
+                    // this shall be the new execution path for upgraded data thus
+                    // after an upgrade this should be the only path ever used again
+                    for (Map<Long, FactionChunk> fcg : f.chunks.values()) {
+                        for (Entry<Long, FactionChunk> fc : fcg.entrySet()) {
+                            hrfWriteChunk(raf, fc.getValue());
+                        }
                     }
-                }
-                raf.writeBytes("   tidu:\n");
-                if (chk.tidu != null) {
-                    for (Entry<TypeDataID, Integer> e : chk.tidu.entrySet()) {
-                        raf.writeBytes(String.format("    %d: %d\n", e.getKey().typeId, e.getValue()));
+                } else {
+                    // this is the old format and I had to do some casting to get it there
+                    // because the Java deserialization puts it back as the original Map
+                    // type so here it is to provide a valid upgrade path for older
+                    // versions
+                    Map<Long, FactionChunk>     m;
+
+                    m = (Map<Long, FactionChunk>)(Object)f.chunks;
+
+                    for (Entry<Long, FactionChunk> fc : m.entrySet()) {
+                        FactionChunk        chk;
+
+                        chk = fc.getValue();
+
+                        hrfWriteChunk(raf, chk);
                     }
                 }
             }
@@ -584,31 +626,31 @@ public class P extends JavaPlugin implements IFactionsProtection {
         saveToDisk = true;
         file = new File("plugin.data.factions");
         
-        // load from original data format until it no longer exists
-        if (file.exists()) {
+        // load from the original file but immediantly create a new
+        // YAML data format file which will then be loaded
+        if (file.exists() && !fdata.exists()) {
             try {
-                getLogger().info("loading from old data format");
+                getLogger().info("upgrading old binary format to YAML format!");
                 factions = (HashMap<String, Faction>)SLAPI.load("plugin.data.factions");
-                getLogger().info(" - loaded");
-                getLogger().info(" - !backup! and !move! plugin.data.factions out of root directory");
+                DumpHumanReadableData();
+                getLogger().info(" - YAML format created old data will not be loaded anymore!");
             } catch (Exception ex) {
-                factions = new HashMap<String, Faction>();
-                saveToDisk = false;
-                smsg("error when trying to load data from binary file on disk (SAVE TO DISK DISABLED)");
                 ex.printStackTrace();
+                smsg("error when trying to load data from binary file on disk (SAVE TO DISK DISABLED)");
             }            
         }
         
-        // only load from if original data format file is missing
-        if (fdata.exists() && !file.exists()) {
+        // the old data format should have been upgraded and created a new
+        // YAML file for us to load from
+        if (fdata.exists()) {
             try {
                 getLogger().info("reading now");
                 factions = LoadHumanReadableData();
             } catch (Exception ex) {
                 factions = new HashMap<String, Faction>();
                 saveToDisk = false;
-                smsg("error when trying to load data from YAML file on disk (SAVE TO DISK DISABLED)");
                 ex.printStackTrace();
+                smsg("error when trying to load data from YAML file on disk (SAVE TO DISK DISABLED)");
             }
         }
         
@@ -1257,16 +1299,18 @@ public class P extends JavaPlugin implements IFactionsProtection {
         Iterator<Entry<String, Faction>>               i;
         Entry<String, Faction>                         e;
         Faction                                        f;
-        Long                                           l;
+        FactionChunk                                   fc;
         
-        l = getChunkLong(world, x, z);
         i = factions.entrySet().iterator();
         while (i.hasNext()) {
             e = i.next();
             f = e.getValue();
             
-            if (f.chunks.containsKey(l)) {
-                return f.chunks.get(l);
+            if (f.chunks.containsKey(world.getName())) {
+                fc = f.chunks.get(world.getName()).get(LongHash.toLong(x, z));
+                if (fc != null) {
+                    return fc;
+                }
             }
         }
         return null;
@@ -1277,12 +1321,16 @@ public class P extends JavaPlugin implements IFactionsProtection {
         Entry<String, Faction>                         e;
         Faction                                        f;
         
+        playerName = playerName.toLowerCase();
+        
         i = factions.entrySet().iterator();
         while (i.hasNext()) {
             e = i.next();
             f = e.getValue();
-            if (f.players.containsKey(playerName)) {
-                return f.players.get(playerName);
+            for (Entry<String, FactionPlayer> e2 : f.players.entrySet()) {
+                if (e2.getKey().toLowerCase().equals(playerName)) {
+                    return e2.getValue();
+                }
             }
         }
         return null;
@@ -1803,7 +1851,7 @@ public class P extends JavaPlugin implements IFactionsProtection {
                     player.sendMessage("§7[f] The faction home is not set! Use /f sethome");
                     return true;
                 }
-                loc = new Location(getServer().getWorld(fp.faction.hw), fp.faction.hx, fp.faction.hy, fp.faction.hz);                
+                loc = new Location(getServer().getWorld(fp.faction.hw), fp.faction.hx, fp.faction.hy + 0.3, fp.faction.hz);                
             }
             
             getServer().getPlayer(args[1]).teleport(loc);
@@ -2540,7 +2588,7 @@ public class P extends JavaPlugin implements IFactionsProtection {
                 return true;
             }
             
-            fp.faction.chunks = new HashMap<Long, FactionChunk>(); 
+            fp.faction.chunks = new HashMap<String, Map<Long, FactionChunk>>(); 
             
             getServer().broadcastMessage(String.format("§7[f] %s has been disbanded", fp.faction.name));
             factions.remove(fp.faction.name.toLowerCase());
@@ -2697,6 +2745,7 @@ public class P extends JavaPlugin implements IFactionsProtection {
                     fchunk.faction.chunks.remove(getChunkLong(player.getWorld(), x >> 4, z >> 4));
                 }
             }
+            
             fchunk = new FactionChunk();
             fchunk.x = x >> 4;
             fchunk.z = z >> 4;
@@ -2707,7 +2756,12 @@ public class P extends JavaPlugin implements IFactionsProtection {
             
             fchunk.faction = fp.faction;
             
-            fp.faction.chunks.put(getChunkLong(player.getWorld(), x >> 4, z >> 4), fchunk);
+            if (fp.faction.chunks.get(player.getWorld().getName()) == null) {
+                fp.faction.chunks.put(player.getWorld().getName(), new HashMap<Long, FactionChunk>());
+            }
+            
+            fp.faction.chunks.get(player.getWorld().getName()).put(LongHash.toLong(x >> 4, z >> 4), fchunk);
+            //fp.faction.chunks.put(getChunkLong(player.getWorld(), x >> 4, z >> 4), fchunk);
             getServer().broadcastMessage(String.format("§7[f] %s of faction %s claimed land", fp.name, fp.faction.name));
             return true;
         }
@@ -2814,7 +2868,7 @@ public class P extends JavaPlugin implements IFactionsProtection {
                 return true;
             }
             
-            fp.faction.chunks = new HashMap<Long, FactionChunk>();
+            fp.faction.chunks = new HashMap<String, Map<Long, FactionChunk>>();
             
             getServer().broadcastMessage(String.format("§7[f] %s of faction %s declaimed all land", fp.name, fp.faction.name));
             return true;

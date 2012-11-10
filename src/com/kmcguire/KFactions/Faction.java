@@ -16,7 +16,8 @@ public class Faction implements Serializable {
     public String                          name;
     public String                          desc;
     public Map<String, FactionPlayer>      players;
-    public Map<Long, FactionChunk>         chunks;
+    //public Map<Long, FactionChunk>         chunks;
+    public Map<String, Map<Long, FactionChunk>>     chunks;
     public int                             mri;         // minimum rank to invite/kick
     public int                             mrc;         // minimum rank to claim/declaim
     public Set<String>                     invites;     // invintations
@@ -44,7 +45,7 @@ public class Faction implements Serializable {
     
     Faction() {
         players = new HashMap<String, FactionPlayer>();
-        chunks = new HashMap<Long, FactionChunk>();
+        chunks = new HashMap<String, Map<Long, FactionChunk>>();
         lpud = System.currentTimeMillis();
         invites = new HashSet<String>();
         friends = new HashMap<String, Integer>();
