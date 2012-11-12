@@ -789,8 +789,11 @@ public class P extends JavaPlugin implements IFactionsProtection {
     }
     
     public Faction getFactionByName(String factionName) {
-        if (factions.containsKey(factionName.toLowerCase()))
-            return factions.get(factionName.toLowerCase());
+        for (Faction f : factions.values()) {
+            if (f.name.toLowerCase().equals(factionName.toLowerCase())) {
+                return f;
+            }
+        }
         return null;
     }
     
