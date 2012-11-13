@@ -15,6 +15,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -38,7 +39,6 @@ import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerPickupItemEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
-import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 
 class DataDumper implements Runnable {
@@ -1308,9 +1308,20 @@ public class P extends JavaPlugin {
         return null;
     }
     
+    // this is not used anymore and I guess I leave it just
+    // for history; i used to use this but it can create
+    // collisions and the X and Z are limited to 16-bit
     public Long getChunkLong(World world, int x, int z) {
         return new Long((world.getUID().getMostSignificantBits() << 32) | (z & 0xffff) | ((x & 0xffff) << 16));
         
+    }
+    
+    public static void sendPlayerBlockChange(Player p, int x, int y, int z, int typeId, byte data) {
+        Location            loc;
+        
+        loc = new Location(p.getWorld(), (double)x, (double)y, (double)z);
+        
+        p.sendBlockChange(loc, typeId, data);
     }
     
     public void displayHelp(Player player, String[] args) {
@@ -1395,6 +1406,22 @@ public class P extends JavaPlugin {
                 return;
             }
             
+            if (args[1].equalsIgnoreCase("basic")) {
+                player.sendMessage("§dcharge§r - charge faction power from item");
+                player.sendMessage("§achkcharge§r - check how much charge from item");
+                player.sendMessage("§aunclaimall§r - unclaim all land");
+                player.sendMessage("§aunclaim§r - unclaim land claimed");
+                player.sendMessage("§dclaim§r - claim land standing on");
+                player.sendMessage("§adisband§r - disband faction");
+                player.sendMessage("§aleave§r - leave current faction");
+                player.sendMessage("§djoin§r <faction> - join faction after invite");
+                player.sendMessage("§akick§r <player> - kick out of faction");
+                player.sendMessage("§dinvite§r <player> - invite to faction");
+                player.sendMessage("§dcreate§r <name> - make new faction");
+                player.sendMessage("§daseechunk§r <name> - walls the chunk in glass");
+                return;
+            }
+            
             // help anchors
             if (args[1].equalsIgnoreCase("anchors")) {
                 player.sendMessage("§7Each faction can only place so many world anchors");
@@ -1412,32 +1439,27 @@ public class P extends JavaPlugin {
         }
         
         // no arguments / unknown command / help
-        player.sendMessage("§7Faction §bBasic§7 Commands");
-        player.sendMessage("§acharge§r - charge faction power from item");
-        player.sendMessage("§achkcharge§r - check how much charge from item");
-        player.sendMessage("§aunclaimall§r - unclaim all land");
-        player.sendMessage("§aunclaim§r - unclaim land claimed");
-        player.sendMessage("§aclaim§r - claim land standing on");
-        player.sendMessage("§adisband§r - disband faction");
-        player.sendMessage("§aleave§r - leave current faction");
-        player.sendMessage("§ajoin§r <faction> - join faction after invite");
-        player.sendMessage("§akick§r <player> - kick out of faction");
-        player.sendMessage("§ainvite§r <player> - invite to faction");
-        player.sendMessage("§acreate§r <name> - make new faction");
         player.sendMessage("§7-------------------------------------");
+        player.sendMessage("§7Faction §bBasic§7 Commands");
+        player.sendMessage("§7-------------------------------------");
+        player.sendMessage("§dhelp basic§r - basic commands");
         player.sendMessage("§ahelp ranks§r - ranking commands");
         player.sendMessage("§ahelp blockrank§r - block rank commands");
         player.sendMessage("§ahelp friends§r - friend commands");
         player.sendMessage("§ahelp zap§r - zap commands");
         player.sendMessage("§ahelp anchors§r - anchor commands");
-        player.sendMessage("§ahelp home§r - home commands");
-        player.sendMessage("§ahelp teleport§r - teleport commands");
+        player.sendMessage("§dhelp home§r - home commands");
+        player.sendMessage("§dhelp teleport§r - teleport commands");
+        player.sendMessage("§7-------------------------------------");
+        player.sendMessage("§7For example: /f help basic");
+        player.sendMessage("§7For example: /f help friends");
+        player.sendMessage("§7-------------------------------------");
     }
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        String      cmd;
-        Player      player;
+        String              cmd;
+        final Player        player;
         
         // MUST BE TYPED INTO THE CONSOLE
         if (!(sender instanceof Player)) {
@@ -2369,6 +2391,60 @@ public class P extends JavaPlugin {
                     player.sendMessage("§7Use §d/f cbr§7 (to clear) and §d/f br§7 to add to the list.");
                 }
             }
+            return true;
+        }
+        
+        if (cmd.equals("seechunk")) {
+            FactionChunk        fc;
+            FactionPlayer       fp;
+            final int           cx, cz;
+            Location            loc;
+            int                 tid;
+            byte                did;
+            World               world;
+            int                 ly, hy;
+            
+            cx = player.getLocation().getBlockX() >> 4;
+            cz = player.getLocation().getBlockZ() >> 4;
+            
+            ly = player.getLocation().getBlockY();
+            ly = ly - 10;
+            hy = ly + 20;
+            
+            ly = ly < 0 ? 0 : ly;
+            hy = hy > 255 ? 255 : hy;
+            
+            tid = 20;
+            did = 0;
+            
+            world = player.getWorld();
+            
+            for (int i = -1; i < 17; ++i) {
+                for (int y = ly; y < hy; ++y) {
+                    if (world.getBlockAt(cx * 16 + i, y, cz * 16 + 16).getTypeId() == 0)
+                        sendPlayerBlockChange(player, cx * 16 + i, y, cz * 16 + 16, tid, (byte)did);
+                    if (world.getBlockAt(cx * 16 + i, y, cz * 16 + -1).getTypeId() == 0)
+                        sendPlayerBlockChange(player, cx * 16 + i, y, cz * 16 + -1, tid, (byte)did);
+                }
+            }
+            
+            for (int i = -1; i < 17; ++i) {
+                for (int y = ly; y < hy; ++y) {
+                    if (world.getBlockAt(cx * 16 + 16, y, cz * 16 + i).getTypeId() == 0)
+                        sendPlayerBlockChange(player, cx * 16 + 16, y, cz * 16 + i, tid, (byte)did);
+                    if (world.getBlockAt(cx * 16 + -1, y, cz * 16 + i).getTypeId() == 0)
+                        sendPlayerBlockChange(player, cx * 16 + -1, y, cz * 16 + i, tid, (byte)did);
+                }
+            }
+            
+            getServer().getScheduler().scheduleSyncDelayedTask(this, new Runnable() {
+                @Override
+                public void run() {
+                    player.getWorld().refreshChunk(cx, cz);
+                }
+            }, 10000);
+            
+            player.sendMessage("§7[f] The current chunk now surrounded with glass where there was air!");
             return true;
         }
         
