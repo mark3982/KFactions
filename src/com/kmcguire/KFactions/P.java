@@ -1462,6 +1462,43 @@ public class P extends JavaPlugin {
                 return;
             }
             
+            if (args[1].equalsIgnoreCase("whycharge")) {
+                player.sendMessage("§7-------------WHY CHARGE?-------------");
+                player.sendMessage("§7The charge (or power) your faction has is what");
+                player.sendMessage("§7protects it from harm by other players. To charge");
+                player.sendMessage("§7your faction hold an item, block, or stack in");
+                player.sendMessage("§7your hand and type §a/f charge§r. You can also see");
+                player.sendMessage("§7how much is will charge by holding it and typing");
+                player.sendMessage("§7the command §a/f chkcharge§r. When an explosion happens");
+                player.sendMessage("§7and it *would* damage your land for each block that");
+                player.sendMessage("§7would be destroyed an amount of faction power is");
+                player.sendMessage("§7deducted from your faction power. If you have no power");
+                player.sendMessage("§7left them the explosion will destroy the block. This");
+                player.sendMessage("§7is how you can be raided and how you can raid other");
+                player.sendMessage("§7factions. You must shoot or detonate TNT or nukes");
+                player.sendMessage("§7next to their land or shoot it into their land.");
+                player.sendMessage("§7Also, power can be used to zap other factions which");
+                player.sendMessage("§7is a second way to siege someone's faction!");
+                player.sendMessage("§7-------------------------------------");
+                return;
+            }
+            
+            if (args[1].equalsIgnoreCase("tut")) {
+                player.sendMessage("§7---------------TUTORIAL--------------");
+                player.sendMessage("§7The first thing you need to do is create a faction");
+                player.sendMessage("§7with §a/f create MyName§r. Now, once you have created");
+                player.sendMessage("§7a faction you need to claim some land where you want");
+                player.sendMessage("§7to build your house. Find a spot and type §a/f seechunk§r.");
+                player.sendMessage("§7The area enclosed in glass is the chunk that you would");
+                player.sendMessage("§7claim if you typed §a/f claim§r. You might have to claim");
+                player.sendMessage("§7multiple chunks to get the specific area you want.");
+                player.sendMessage("§7Now, that you have claimed land you need to charge");
+                player.sendMessage("§7your faction power. To understand charging type the");
+                player.sendMessage("§7command §a/f help whycharge§r.");
+                player.sendMessage("§7-------------------------------------");
+                return;
+            }
+            
             player.sendMessage(String.format("§7You specified help but the argument %s is not understood!", args[1]));
             return;
         }
@@ -1469,6 +1506,8 @@ public class P extends JavaPlugin {
         // no arguments / unknown command / help
         player.sendMessage("§7-------------------------------------");
         player.sendMessage("§7Faction §bBasic§7 Commands");
+        player.sendMessage("§7-------------------------------------");
+        player.sendMessage("§dhelp tut§r - short tutorial");
         player.sendMessage("§7-------------------------------------");
         player.sendMessage("§dhelp basic§r - basic commands");
         player.sendMessage("§ahelp ranks§r - ranking commands");
@@ -2902,13 +2941,13 @@ public class P extends JavaPlugin {
             
             // DO WE HAVE ENOUGH POWER? 
             // NEED ENOUGH TO HOLD FOR 24 HOURS
-            pow = getFactionPower(fp.faction);
-            if (pow < ((fp.faction.chunks.size() + 1) * 24.0)) {
-                player.sendMessage("§7[f] The faction lacks needed power to claim land");
-                return true;
-            }
+            //pow = getFactionPower(fp.faction);
+            //if (pow < ((fp.faction.chunks.size() + 1) * 24.0)) {
+            //    player.sendMessage("§7[f] The faction lacks needed power to claim land");
+            //    return true;
+            //}
             
-            smsg(String.format("blockx:%d", player.getLocation().getBlockX()));
+            //smsg(String.format("blockx:%d", player.getLocation().getBlockX()));
             
             x = player.getLocation().getBlockX();
             z = player.getLocation().getBlockZ();
