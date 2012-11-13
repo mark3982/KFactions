@@ -18,9 +18,9 @@ public class FactionChunk implements Serializable {
     public Set<String>          builders;   // builders can build/destroy things    
     public int                  x, z;
     public boolean                          tiddefreject;
-    public Map<TypeDataID, Integer>         tid;
+    public Map<Integer, Integer>         tid;
     public boolean                          tidudefreject;
-    public Map<TypeDataID, Integer>         tidu;
+    public Map<Integer, Integer>         tidu;
     public String               worldName;
     
     
@@ -29,6 +29,7 @@ public class FactionChunk implements Serializable {
     FactionChunk() {
         users = new HashSet<String>();
         builders = new HashSet<String>();
-        tid = new HashMap<TypeDataID, Integer>();
+        tid = new HashMap<Integer, Integer>();
+        tidu = new HashMap<Integer, Integer>();
     }
 }

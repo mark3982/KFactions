@@ -160,29 +160,19 @@ public class P extends JavaPlugin {
                     fc.mrb = ccs.getInt("mrb");
                     
                     _ccs = ccs.getConfigurationSection("tid");
-                    fc.tid = new HashMap<TypeDataID, Integer>();
+                    fc.tid = new HashMap<Integer, Integer>();
                     if (_ccs != null) {
                         for (Entry<String, Object> en : _ccs.getValues(false).entrySet()) {
-                            TypeDataID          tid;
-
-                            tid = new TypeDataID();
-                            tid.typeId = Integer.parseInt(en.getKey());
-                            tid.dataId = 0;
-                            fc.tid.put(tid, (Integer)en.getValue());
+                            fc.tid.put(Integer.parseInt(en.getKey()), (Integer)en.getValue());
                         }
                     }
                     
                     _ccs = ccs.getConfigurationSection("tidu");
-                    fc.tidu = new HashMap<TypeDataID, Integer>();
+                    fc.tidu = new HashMap<Integer, Integer>();
 
                     if (_ccs != null) {
                         for (Entry<String, Object> en : _ccs.getValues(false).entrySet()) {
-                            TypeDataID          tid;
-
-                            tid = new TypeDataID();
-                            tid.typeId = Integer.parseInt(en.getKey());
-                            tid.dataId = 0;
-                            fc.tid.put(tid, (Integer)en.getValue());
+                            fc.tid.put(Integer.parseInt(en.getKey()), (Integer)en.getValue());
                         }
                     }
                     
@@ -359,14 +349,14 @@ public class P extends JavaPlugin {
         raf.writeBytes(String.format("   mrb: %d\n", chk.mrb));
         raf.writeBytes("   tid:\n");
         if (chk.tid != null) {
-            for (Entry<TypeDataID, Integer> e : chk.tid.entrySet()) {
-                raf.writeBytes(String.format("    %d: %d\n", e.getKey().typeId, e.getValue()));
+            for (Entry<Integer, Integer> e : chk.tid.entrySet()) {
+                raf.writeBytes(String.format("    %d: %d\n", e.getKey(), e.getValue()));
             }
         }
         raf.writeBytes("   tidu:\n");
         if (chk.tidu != null) {
-            for (Entry<TypeDataID, Integer> e : chk.tidu.entrySet()) {
-                raf.writeBytes(String.format("    %d: %d\n", e.getKey().typeId, e.getValue()));
+            for (Entry<Integer, Integer> e : chk.tidu.entrySet()) {
+                raf.writeBytes(String.format("    %d: %d\n", e.getKey(), e.getValue()));
             }
         }
     }
@@ -850,6 +840,7 @@ public class P extends JavaPlugin {
         w = player.getWorld();
         //getServer().getLogger().info(String.format("x:%d z:%d", x, z));
         
+        // they are for sure not interacting with anything
         if (event.getClickedBlock() == null)
             return;
         
@@ -867,7 +858,6 @@ public class P extends JavaPlugin {
 
         if (fchunk.tidu != null) {
             Block       block;
-            TypeDataID  tid;
             
             if (!fchunk.tidudefreject)
                 event.setCancelled(false);
@@ -875,13 +865,10 @@ public class P extends JavaPlugin {
                 event.setCancelled(true);
             
             block = event.getClickedBlock();
-            tid = new TypeDataID();
-            tid.typeId = block.getTypeId();
-            tid.dataId = block.getData();
-            getServer().getLogger().info(String.format("int:%d:%d", tid.typeId, tid.dataId));
-            if (fchunk.tidu.containsKey(tid)) {
-                if (rank < fchunk.tidu.get(tid)) {
-                    player.sendMessage(String.format("§7[f] Your rank[%d] needs to be %d or higher for %s!", rank, fchunk.tid.get(tid), TypeIdToNameMap.getNameFromTypeId(tid.typeId)));
+
+            if (fchunk.tidu.containsKey(block.getTypeId())) {
+                if (rank < fchunk.tidu.get(block.getTypeId())) {
+                    player.sendMessage(String.format("§7[f] Your rank[%d] needs to be %d or higher for %s!", rank, fchunk.tid.get(block.getTypeId()), TypeIdToNameMap.getNameFromTypeId(block.getTypeId())));
                     if (!fchunk.tidudefreject)
                         event.setCancelled(true);
                     else
@@ -951,14 +938,6 @@ public class P extends JavaPlugin {
         block = event.getBlockPlaced();
         player = event.getPlayer();
         
-        //        27592, 130
-        //if ((block.getTypeId() == 27592) || (block.getTypeId() == 130)) {
-        //    event.setCancelled(true);
-        //    player.sendMessage("This block is disabled until I can fix it tomorrow.");
-        //    return;
-        //}
-        
-        
         x = event.getBlock().getX() >> 4;
         z = event.getBlock().getZ() >> 4;
         w = player.getWorld();
@@ -978,19 +957,14 @@ public class P extends JavaPlugin {
         rank = getPlayerRankOnLand(player, fchunk, fplayer);
         
         if (fchunk.tid != null) {
-            TypeDataID  tid;
             
             if (!fchunk.tiddefreject)
                 event.setCancelled(false);
             else 
                 event.setCancelled(true);
-            
-            tid = new TypeDataID();
-            tid.typeId = block.getTypeId();
-            tid.dataId = block.getData();
-            if (fchunk.tid.containsKey(tid)) {
-                if (rank < fchunk.tid.get(tid)) {
-                    player.sendMessage(String.format("§7[f] Your rank[%d] needs to be %d or higher for %s!", rank, fchunk.tid.get(tid), TypeIdToNameMap.getNameFromTypeId(tid.typeId)));
+            if (fchunk.tid.containsKey(block.getTypeId())) {
+                if (rank < fchunk.tid.get(block.getTypeId())) {
+                    player.sendMessage(String.format("§7[f] Your rank[%d] needs to be %d or higher for %s!", rank, fchunk.tid.get(block.getTypeId()), TypeIdToNameMap.getNameFromTypeId(block.getTypeId())));
                     if (!fchunk.tiddefreject)
                         event.setCancelled(true);
                     else
@@ -1065,20 +1039,15 @@ public class P extends JavaPlugin {
         
         rank = getPlayerRankOnLand(player, fchunk, fplayer);
         
-        if (fchunk.tid != null) {
-            TypeDataID  tid;
-            
+        if (fchunk.tid != null) {            
             if (!fchunk.tiddefreject)
                 event.setCancelled(false);
             else 
                 event.setCancelled(true);
             
-            tid = new TypeDataID();
-            tid.typeId = block.getTypeId();
-            tid.dataId = block.getData();
-            if (fchunk.tid.containsKey(tid)) {
-                if (rank < fchunk.tid.get(tid)) {
-                    player.sendMessage(String.format("§7[f] Your rank[%d] needs to be %d or higher for %s!", rank, fchunk.tid.get(tid), TypeIdToNameMap.getNameFromTypeId(tid.typeId)));
+            if (fchunk.tid.containsKey(block.getTypeId())) {
+                if (rank < fchunk.tid.get(block.getTypeId())) {
+                    player.sendMessage(String.format("§7[f] Your rank[%d] needs to be %d or higher for %s!", rank, fchunk.tid.get(block.getTypeId()), TypeIdToNameMap.getNameFromTypeId(block.getTypeId())));
                     if (!fchunk.tiddefreject)
                         event.setCancelled(true);
                     else
@@ -2304,7 +2273,7 @@ public class P extends JavaPlugin {
             FactionPlayer       fp;
             FactionChunk        fc;
             int                 x, z;
-            Map<TypeDataID, Integer>     m;
+            Map<Integer, Integer>     m;
             
             fp = getFactionPlayer(player.getName());
             if (fp == null) {
@@ -2335,17 +2304,15 @@ public class P extends JavaPlugin {
             
             player.sendMessage("§7[f] Clearing Block Ranks");
             if (m != null) {
-                Iterator<Entry<TypeDataID, Integer>>         i;
-                Entry<TypeDataID, Integer>                   e;
-                TypeDataID                                   tid;
+                Iterator<Entry<Integer, Integer>>         i;
+                Entry<Integer, Integer>                   e;
                 
                 i = m.entrySet().iterator();
                 
                 while (i.hasNext()) {
                     e = i.next();
-                    tid = e.getKey();
                     if (e.getValue() >= fp.rank) {
-                        player.sendMessage(String.format("§7 Rank too low for to clear %s[%d] at rank %d!", TypeIdToNameMap.getNameFromTypeId(tid.typeId), tid.dataId, e.getValue()));
+                        player.sendMessage(String.format("§7 Rank too low for to clear %s[%d] at rank %d!", TypeIdToNameMap.getNameFromTypeId(e.getKey()), e.getKey(), e.getValue()));
                     } else {
                         i.remove();
                     }
@@ -2359,7 +2326,7 @@ public class P extends JavaPlugin {
             FactionPlayer       fp;
             FactionChunk        fc;
             int                 x, z;
-            Map<TypeDataID, Integer>     m;
+            Map<Integer, Integer>     m;
             
             fp = getFactionPlayer(player.getName());
              if (fp == null) {
@@ -2386,16 +2353,14 @@ public class P extends JavaPlugin {
             }
             
             if (m != null) {
-                Iterator<Entry<TypeDataID, Integer>>         i;
-                Entry<TypeDataID, Integer>                   e;
-                TypeDataID                                   tid;
+                Iterator<Entry<Integer, Integer>>         i;
+                Entry<Integer, Integer>                   e;
                 
                 i = m.entrySet().iterator();
                 
                 while (i.hasNext()) {
                     e = i.next();
-                    tid = e.getKey();
-                    player.sendMessage(String.format("§7For §c%s§7(§d%d§7) you need rank §c%d§7 or better.", TypeIdToNameMap.getNameFromTypeId(tid.typeId), tid.typeId, e.getValue()));
+                    player.sendMessage(String.format("§7For §c%s§7(§d%d§7) you need rank §c%d§7 or better.", TypeIdToNameMap.getNameFromTypeId(e.getKey()), e.getKey(), e.getValue()));
                 }
                 
                 if (cmd.equals("lbru")) {
@@ -2412,10 +2377,9 @@ public class P extends JavaPlugin {
             FactionChunk        fc;
             int                 typeId;
             byte                typeData;
-            TypeDataID      tdir;
             int                 rank;
             int                 x, z;
-            Map<TypeDataID, Integer>     m;
+            Map<Integer, Integer>     m;
             
             fp = getFactionPlayer(player.getName());
             if (fp == null) {
@@ -2470,29 +2434,26 @@ public class P extends JavaPlugin {
                 typeData = player.getItemInHand().getData().getData();
             }
             
-            tdir = new TypeDataID();
-            tdir.typeId = typeId;
-            tdir.dataId = typeData;
             
             if (cmd.equals("bru")) {
                 if (fc.tidu == null)
-                    fc.tidu = new HashMap<TypeDataID, Integer>();
+                    fc.tidu = new HashMap<Integer, Integer>();
                 m = fc.tidu;
             } else {
                 if (fc.tid == null)
-                    fc.tid = new HashMap<TypeDataID, Integer>();
+                    fc.tid = new HashMap<Integer, Integer>();
                 m = fc.tid;
             }
             
             /// UPGRADE CODE BLOCK
-            if (m.containsKey(tdir)) {
-                if (m.get(tdir) >= fp.rank) {
-                    player.sendMessage(String.format("§7[f] Block rank exists §a%d§r and is equal or higher than your rank §b%d§r.", fc.tid.get(tdir), fp.rank));
+            if (m.containsKey(typeId)) {
+                if (m.get(typeId) >= fp.rank) {
+                    player.sendMessage(String.format("§7[f] Block rank exists for §a%s[%d]§r and is equal or higher than your rank §b%d§r.", TypeIdToNameMap.getNameFromTypeId(typeId), fc.tid.get(typeId), fp.rank));
                     return true;
                 }
             }
             
-            m.put(tdir, rank);
+            m.put(typeId, rank);
             player.sendMessage(String.format("§7[f] Block §a%s§r[%d] at rank §a%d§r added to current claim.", TypeIdToNameMap.getNameFromTypeId(typeId), typeId, rank));
             return true;
         }
