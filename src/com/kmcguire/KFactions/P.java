@@ -1329,84 +1329,104 @@ public class P extends JavaPlugin {
         if ((args.length > 1) && args[0].equals("help")) {
             // help rank
             if (args[1].equalsIgnoreCase("ranks")) {
+                player.sendMessage("§7------------RANKS--------------------");
                 player.sendMessage("§7These commands will change a player's rank. They also set");
                 player.sendMessage("§7the required rank needed to perform certain commands.");
-                player.sendMessage("§asetrank§r <player> <rank> - set new rank");
-                player.sendMessage("§acbrank§r <rank> - set chunk build rank");
-                player.sendMessage("§acurank§r <rank> - set chunk use rank");
+                player.sendMessage("§7-------------------------------------");
+                player.sendMessage("§dsetrank§r <player> <rank> - set new rank");
+                player.sendMessage("§dcbrank§r <rank> - set chunk build rank");
+                player.sendMessage("§dcurank§r <rank> - set chunk use rank");
                 player.sendMessage("§asetmri§r <rank> - set minimum rank to invite");
                 player.sendMessage("§asetmrc§r <rank> - set minimum rank to claim");
                 player.sendMessage("§asetmrtp§r <rank> - minimum rank to do teleport cmds and set home");
+                player.sendMessage("§7-------------------------------------");
                 return;
             }
             
             // help friends
             if (args[1].equalsIgnoreCase("friends")) {
+                player.sendMessage("§7--------------FRIENDS----------------");
                 player.sendMessage("§7Friends are given a rank specified which makes them able");
                 player.sendMessage("§7to interact with or break/place blocks even though they");
                 player.sendMessage("§7are not in your faction.");
+                player.sendMessage("§7-------------------------------------");
                 player.sendMessage("§aaddfriend§r <name> <rank> - add friend to faction");
                 player.sendMessage("§aremfriend§r <name> - remove faction friend");
                 player.sendMessage("§alistfriends§r - inspect chunk you are standing on");
+                player.sendMessage("§7-------------------------------------");
                 return;
             }
             
             // help blockrank
             if (args[1].equalsIgnoreCase("blockrank")) {
+                player.sendMessage("§7-------------BLOCKRANK---------------");
                 player.sendMessage("§7This sets the specific rank needed to either");
                 player.sendMessage("§7interact with or place/break blocks. Used in");
                 player.sendMessage("§7conjunction with friends you can allow them");
                 player.sendMessage("§7access to certain blocks.");
-                player.sendMessage("§a[f] cbr, lbr, and br are for block place/break ---");
-                player.sendMessage("§a[f] cbru, lbru, and bru are for block interact ---");
+                player.sendMessage("§7-------------------------------------");
+                player.sendMessage("§7cbr, lbr, and br are for block place/break ---");
+                player.sendMessage("§7cbru, lbru, and bru are for block interact ---");
+                player.sendMessage("§7-------------------------------------");
                 player.sendMessage("§acbr or cbrus§r - clear block ranks for current claim");
                 player.sendMessage("§albr or lbru§r - list block ranks for current claim");
-                player.sendMessage("§abr or bru§r <rank> <typeID> <dataId(optional)> - or hold item in hand and just give <rank>");
+                player.sendMessage("§abr or bru§r <rank> <typeID> - or hold item in hand and just give <rank>");
+                player.sendMessage("§7-------------------------------------");
                 return;
             }
             
             // help zap
             if (args[1].equalsIgnoreCase("zap")) {
+                player.sendMessage("§7----------------ZAP------------------");
                 player.sendMessage("§7This is used to assault another faction. This is a");
                 player.sendMessage("§7alternative to using nukes/tnt/explosives. You can");
                 player.sendMessage("§7not zap a faction that is lower in power than your");
                 player.sendMessage("§7own faction!");
+                player.sendMessage("§7-------------------------------------");
                 player.sendMessage("§asetzaprank§r - set rank needed to issue /zap commands");
-                player.sendMessage("§ashowzaps§r - shows incoming and outgoing zaps");
-                player.sendMessage("§azap§r <faction> <amount> - zap faction's power using your own power");
+                player.sendMessage("§dshowzaps§r - shows incoming and outgoing zaps");
+                player.sendMessage("§dzap§r <faction> <amount> - zap faction's power using your own power");
                 player.sendMessage("§asetmrz§r <rank> - set minimum rank to zap");
+                player.sendMessage("§7-------------------------------------");
                 return;
             }
             
             // help home
             if (args[1].equalsIgnoreCase("home")) {
+                player.sendMessage("§7---------------HOME------------------");
                 player.sendMessage("§7These are important commands which allow you to set");
                 player.sendMessage("§7a faction home so that other players can use the");
                 player.sendMessage("§7command /f home to teleport home. This commands");
                 player.sendMessage("§7consume 10% of your faction power. On some servers");
                 player.sendMessage("§7you may be able to use a bed to save faction power!");
+                player.sendMessage("§7-------------------------------------");
                 player.sendMessage("§asetmrsh§r - sets minimum rank to use /f sethome");
                 player.sendMessage("§asethome§r - set home for faction for teleport cmds");
-                player.sendMessage("§ahome§r - short for tptp <yourname> home");                
+                player.sendMessage("§ahome§r - short for tptp <yourname> home");
+                player.sendMessage("§7-------------------------------------");
                 return;
             }
             
             // help teleport
             if (args[1].equalsIgnoreCase("teleport")) {
+                player.sendMessage("§7-------------TELEPORT----------------");
                 player.sendMessage("§7These are the teleport commands. You can teleport to");
                 player.sendMessage("§7your faction home, to spawn, or to another player.");
                 player.sendMessage("§7These commands consume 10% of your faction power.");
                 player.sendMessage("§7You also can not teleport to a player in your faction");
                 player.sendMessage("§7who is a higher rank than you. They must teleport you");
                 player.sendMessage("§7to them. You can teleport to someone of equal or lower");
+                player.sendMessage("§7-------------------------------------");
                 player.sendMessage("§7rank than your self.");
                 player.sendMessage("§atptp§r <player> <player|home> - teleport player to player ");
                 player.sendMessage("§ahome§r - short for tptp <yourname> home");
                 player.sendMessage("§aspawn§r - short for tptp <yourname> spawn");
+                player.sendMessage("§7-------------------------------------");
                 return;
             }
             
             if (args[1].equalsIgnoreCase("basic")) {
+                player.sendMessage("§7--------------BASIC------------------");
                 player.sendMessage("§dcharge§r - charge faction power from item");
                 player.sendMessage("§achkcharge§r - check how much charge from item");
                 player.sendMessage("§aunclaimall§r - unclaim all land");
@@ -1419,11 +1439,13 @@ public class P extends JavaPlugin {
                 player.sendMessage("§dinvite§r <player> - invite to faction");
                 player.sendMessage("§dcreate§r <name> - make new faction");
                 player.sendMessage("§daseechunk§r <name> - walls the chunk in glass");
+                player.sendMessage("§7-------------------------------------");
                 return;
             }
             
             // help anchors
             if (args[1].equalsIgnoreCase("anchors")) {
+                player.sendMessage("§7-------------------------------------");
                 player.sendMessage("§7Each faction can only place so many world anchors");
                 player.sendMessage("§7The current limit is 2 per faction. To see where");
                 player.sendMessage("§7anchors are that have been placed by players in your");
@@ -1431,6 +1453,7 @@ public class P extends JavaPlugin {
                 player.sendMessage("§7that do not exist contact an administrator and tell");
                 player.sendMessage("§7them to use the special /resetwa command in the console.");
                 player.sendMessage("§ashowanchors§r - shows world anchors your faction has placed");
+                player.sendMessage("§7-------------------------------------");
                 return;
             }
             
@@ -2408,8 +2431,8 @@ public class P extends JavaPlugin {
             cz = player.getLocation().getBlockZ() >> 4;
             
             ly = player.getLocation().getBlockY();
-            ly = ly - 10;
-            hy = ly + 20;
+            ly = ly - 5;
+            hy = ly + 10;
             
             ly = ly < 0 ? 0 : ly;
             hy = hy > 255 ? 255 : hy;
