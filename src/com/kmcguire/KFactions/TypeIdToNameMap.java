@@ -6,13 +6,25 @@ package com.kmcguire.KFactions;
 
 import java.util.HashMap;
 
-/**
+/** This provides a way to map a type identifier integer onto a
+ *  string where the string provides the textual name of the block/item
+ *  represented by the type identifier integer.
+ *  
+ *  I was unable to find any way in Bukkit to do this so I created this
+ *  class which has everything statically initialized and access through
+ *  a single method.
  *
- * @author kmcguire
  */
 public class TypeIdToNameMap {
     private final static HashMap<Integer, String>            nameMap;
     
+    /**
+     * This will return the textual string for the type identifier
+     * passed in.
+     * 
+     * @param typeId        The type identifier for the block/item.
+     * @return              The textual string representing the type identifier.
+     */
     public static String getNameFromTypeId(int typeId) {
         String          name;
         

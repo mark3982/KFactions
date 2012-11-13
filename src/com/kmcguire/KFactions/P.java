@@ -64,15 +64,17 @@ class DataDumper implements Runnable {
 }
 
 public class P extends JavaPlugin {
-    public Map<String, Faction>        factions;
-    private boolean                    saveToDisk;
-    public static final File           fdata;
+    public Map<String, Faction>                 factions;
+    private boolean                             saveToDisk;
+    public static final File                    fdata;
+    
+    private static HashMap<String, Long>        seeChunkLast;
     
     static final int    NOPVP =        0x01;
     static final int    NOBOOM =       0x02;
     static final int    NODECAY =      0x04;
     
-    public HashMap<Long, Integer>      emcMap;
+    public HashMap<Long, Integer>                emcMap;
     
     // configuration
     public double       landPowerCostPerHour;
@@ -530,6 +532,9 @@ public class P extends JavaPlugin {
         RandomAccessFile                raf;
         Iterator<Entry<Long, Integer>>  i;
         Entry<Long, Integer>            e;
+        
+        seeChunkLast = new HashMap<String, Long>();
+        
         
         // ensure that emcvals.txt exists
         femcvals = new File("kfactions.emcvals.txt");
@@ -1478,6 +1483,54 @@ public class P extends JavaPlugin {
         player.sendMessage("§7For example: /f help friends");
         player.sendMessage("§7-------------------------------------");
     }
+    
+    public void showPlayerChunk(Player player, boolean undo) {
+        final int           cx, cz;
+        int                 tid;
+        byte                did;
+        World               world;
+        int                 ly, hy;
+
+        cx = player.getLocation().getBlockX() >> 4;
+        cz = player.getLocation().getBlockZ() >> 4;
+
+        ly = player.getLocation().getBlockY();
+        ly = ly - 5;
+        hy = ly + 10;
+
+        ly = ly < 0 ? 0 : ly;
+        hy = hy > 255 ? 255 : hy;
+
+        if (!undo) {
+            // replace air with glass
+            tid = 20;
+            did = 0;
+        } else {
+            // replace glass back with air
+            tid = 0;
+            did = 0;
+        }
+
+        world = player.getWorld();
+
+        for (int i = -1; i < 17; ++i) {
+            for (int y = ly; y < hy; ++y) {
+                if (world.getBlockAt(cx * 16 + i, y, cz * 16 + 16).getTypeId() == 0)
+                    sendPlayerBlockChange(player, cx * 16 + i, y, cz * 16 + 16, tid, (byte)did);
+                if (world.getBlockAt(cx * 16 + i, y, cz * 16 + -1).getTypeId() == 0)
+                    sendPlayerBlockChange(player, cx * 16 + i, y, cz * 16 + -1, tid, (byte)did);
+            }
+        }
+
+        for (int i = -1; i < 17; ++i) {
+            for (int y = ly; y < hy; ++y) {
+                if (world.getBlockAt(cx * 16 + 16, y, cz * 16 + i).getTypeId() == 0)
+                    sendPlayerBlockChange(player, cx * 16 + 16, y, cz * 16 + i, tid, (byte)did);
+                if (world.getBlockAt(cx * 16 + -1, y, cz * 16 + i).getTypeId() == 0)
+                    sendPlayerBlockChange(player, cx * 16 + -1, y, cz * 16 + i, tid, (byte)did);
+            }
+        }        
+    } 
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
@@ -2418,54 +2471,29 @@ public class P extends JavaPlugin {
         }
         
         if (cmd.equals("seechunk")) {
-            FactionChunk        fc;
-            FactionPlayer       fp;
-            final int           cx, cz;
-            Location            loc;
-            int                 tid;
-            byte                did;
-            World               world;
-            int                 ly, hy;
+            long                ct, dt;
             
-            cx = player.getLocation().getBlockX() >> 4;
-            cz = player.getLocation().getBlockZ() >> 4;
+            ct = System.currentTimeMillis();
             
-            ly = player.getLocation().getBlockY();
-            ly = ly - 5;
-            hy = ly + 10;
-            
-            ly = ly < 0 ? 0 : ly;
-            hy = hy > 255 ? 255 : hy;
-            
-            tid = 20;
-            did = 0;
-            
-            world = player.getWorld();
-            
-            for (int i = -1; i < 17; ++i) {
-                for (int y = ly; y < hy; ++y) {
-                    if (world.getBlockAt(cx * 16 + i, y, cz * 16 + 16).getTypeId() == 0)
-                        sendPlayerBlockChange(player, cx * 16 + i, y, cz * 16 + 16, tid, (byte)did);
-                    if (world.getBlockAt(cx * 16 + i, y, cz * 16 + -1).getTypeId() == 0)
-                        sendPlayerBlockChange(player, cx * 16 + i, y, cz * 16 + -1, tid, (byte)did);
+            if (seeChunkLast.get(player.getName()) != null) {
+                dt = ct - seeChunkLast.get(player.getName());
+                if (dt < 10000) {
+                    player.sendMessage(String.format("§7You need to wait %d more seconds before you can use this command again!", 10 - (dt / 1000)));
+                    return true;
                 }
             }
             
-            for (int i = -1; i < 17; ++i) {
-                for (int y = ly; y < hy; ++y) {
-                    if (world.getBlockAt(cx * 16 + 16, y, cz * 16 + i).getTypeId() == 0)
-                        sendPlayerBlockChange(player, cx * 16 + 16, y, cz * 16 + i, tid, (byte)did);
-                    if (world.getBlockAt(cx * 16 + -1, y, cz * 16 + i).getTypeId() == 0)
-                        sendPlayerBlockChange(player, cx * 16 + -1, y, cz * 16 + i, tid, (byte)did);
-                }
-            }
+            seeChunkLast.put(player.getName(), ct);
+            
+            showPlayerChunk(player, false);
             
             getServer().getScheduler().scheduleSyncDelayedTask(this, new Runnable() {
                 @Override
                 public void run() {
-                    player.getWorld().refreshChunk(cx, cz);
+                    getLogger().info("OK sync running!");
+                    showPlayerChunk(player, true);
                 }
-            }, 10000);
+            }, 20 * 10);
             
             player.sendMessage("§7[f] The current chunk now surrounded with glass where there was air!");
             return true;
