@@ -63,7 +63,7 @@ class DataDumper implements Runnable {
     }
 }
 
-public class P extends JavaPlugin implements IFactionsProtection {
+public class P extends JavaPlugin {
     public Map<String, Faction>        factions;
     private boolean                    saveToDisk;
     public static final File           fdata;
@@ -881,7 +881,7 @@ public class P extends JavaPlugin implements IFactionsProtection {
             getServer().getLogger().info(String.format("int:%d:%d", tid.typeId, tid.dataId));
             if (fchunk.tidu.containsKey(tid)) {
                 if (rank < fchunk.tidu.get(tid)) {
-                    player.sendMessage(String.format("§7[f] Your rank[%d] is less than rank %d for block type %d.", rank, fchunk.tid.get(tid), tid));
+                    player.sendMessage(String.format("§7[f] Your rank[%d] needs to be %d or higher for %s!", rank, fchunk.tid.get(tid), TypeIdToNameMap.getNameFromTypeId(tid.typeId)));
                     if (!fchunk.tidudefreject)
                         event.setCancelled(true);
                     else
@@ -990,7 +990,7 @@ public class P extends JavaPlugin implements IFactionsProtection {
             tid.dataId = block.getData();
             if (fchunk.tid.containsKey(tid)) {
                 if (rank < fchunk.tid.get(tid)) {
-                    player.sendMessage(String.format("§7[f] Land block rank for block is %d and your rank is %d.", fchunk.tid.get(tid), rank));
+                    player.sendMessage(String.format("§7[f] Your rank[%d] needs to be %d or higher for %s!", rank, fchunk.tid.get(tid), TypeIdToNameMap.getNameFromTypeId(tid.typeId)));
                     if (!fchunk.tiddefreject)
                         event.setCancelled(true);
                     else
@@ -1078,7 +1078,7 @@ public class P extends JavaPlugin implements IFactionsProtection {
             tid.dataId = block.getData();
             if (fchunk.tid.containsKey(tid)) {
                 if (rank < fchunk.tid.get(tid)) {
-                    player.sendMessage(String.format("§7[f] Land block rank for block is %d and your rank is %d.", fchunk.tid.get(tid), rank));
+                    player.sendMessage(String.format("§7[f] Your rank[%d] needs to be %d or higher for %s!", rank, fchunk.tid.get(tid), TypeIdToNameMap.getNameFromTypeId(tid.typeId)));
                     if (!fchunk.tiddefreject)
                         event.setCancelled(true);
                     else
@@ -1298,11 +1298,6 @@ public class P extends JavaPlugin implements IFactionsProtection {
         return f.power;
     }
     
-    @Override
-    public boolean isFactionChunk(World world, int x, int z) { 
-        return getFactionChunk(world, x, z) != null;
-    }
-    
     public FactionChunk getFactionChunk(World world, int x, int z) {
         Iterator<Entry<String, Faction>>               i;
         Entry<String, Faction>                         e;
@@ -1349,44 +1344,125 @@ public class P extends JavaPlugin implements IFactionsProtection {
         
     }
     
-    public void displayHelp(Player player) {
-        player.sendMessage("Faction Command Interface Help");
-        player.sendMessage("§6charge§r - charge faction power from item");
-        player.sendMessage("§6chkcharge§r - check how much charge from item");
-        player.sendMessage("§6unclaimall§r - unclaim all land");
-        player.sendMessage("§6unclaim§r - unclaim land claimed");
-        player.sendMessage("§6claim§r - claim land standing on");
-        player.sendMessage("§6disband§r - disband faction");
-        player.sendMessage("§6leave§r - leave current faction");
-        player.sendMessage("§6join§r <faction> - join faction after invite");
-        player.sendMessage("§6kick§r <player> - kick out of faction");
-        player.sendMessage("§6invite§r <player> - invite to faction");
-        player.sendMessage("§6create§r <name> - make new faction");
-        player.sendMessage("§6setrank§r <player> <rank> - set new rank");
-        player.sendMessage("§6cbrank§r <rank> - set chunk build rank");
-        player.sendMessage("§6curank§r <rank> - set chunk use rank");
-        player.sendMessage("§6inspect§r - inspect chunk you are standing on");
-        player.sendMessage("§6addfriend§r <name> <rank> - add friend to faction");
-        player.sendMessage("§6remfriend§r <name> - remove faction friend");
-        player.sendMessage("§6listfriends§r - inspect chunk you are standing on");
-        player.sendMessage("§7[f] cbr, lbr, and br are for block place/break ---");
-        player.sendMessage("§7[f] cbru, lbru, and bru are for block interact ---");
-        player.sendMessage("§6cbr or cbrus§r - clear block ranks for current claim");
-        player.sendMessage("§6lbr or lbru§r - list block ranks for current claim");
-        player.sendMessage("§6br or bru§r <rank> <typeID> <dataId(optional)> - or hold item in hand and just give <rank>");
-        player.sendMessage("§6setzaprank§r - set rank needed to issue /zap commands");
-        player.sendMessage("§6showzaps§r - shows incoming and outgoing zaps");
-        player.sendMessage("§6zap§r <faction> <amount> - zap faction's power using your own power");
-        player.sendMessage("§6setmri§r <rank> - set minimum rank to invite");
-        player.sendMessage("§6setmrc§r <rank> - set minimum rank to claim");
-        player.sendMessage("§6setmrz§r <rank> - set minimum rank to zap");        
-        player.sendMessage("§6sethome§r - set home for faction for teleport cmds");
-        player.sendMessage("§6setmrtp§r <rank> - minimum rank to do teleport cmds and set home");
-        player.sendMessage("§6tptp§r <player> <player|home> - teleport player to player ");
-        player.sendMessage("§6home§r - short for tptp <yourname> home");
-        player.sendMessage("§6spawn§r - short for tptp <yourname> spawn");
-        player.sendMessage("§6showanchors§r - shows world anchors your faction has placed");
-        player.sendMessage("§6setmrsh§r - sets minimum rank to use /f sethome");
+    public void displayHelp(Player player, String[] args) {
+        
+        if ((args.length > 1) && args[0].equals("help")) {
+            // help rank
+            if (args[1].equalsIgnoreCase("ranks")) {
+                player.sendMessage("§7These commands will change a player's rank. They also set");
+                player.sendMessage("§7the required rank needed to perform certain commands.");
+                player.sendMessage("§asetrank§r <player> <rank> - set new rank");
+                player.sendMessage("§acbrank§r <rank> - set chunk build rank");
+                player.sendMessage("§acurank§r <rank> - set chunk use rank");
+                player.sendMessage("§asetmri§r <rank> - set minimum rank to invite");
+                player.sendMessage("§asetmrc§r <rank> - set minimum rank to claim");
+                player.sendMessage("§asetmrtp§r <rank> - minimum rank to do teleport cmds and set home");
+                return;
+            }
+            
+            // help friends
+            if (args[1].equalsIgnoreCase("friends")) {
+                player.sendMessage("§7Friends are given a rank specified which makes them able");
+                player.sendMessage("§7to interact with or break/place blocks even though they");
+                player.sendMessage("§7are not in your faction.");
+                player.sendMessage("§aaddfriend§r <name> <rank> - add friend to faction");
+                player.sendMessage("§aremfriend§r <name> - remove faction friend");
+                player.sendMessage("§alistfriends§r - inspect chunk you are standing on");
+                return;
+            }
+            
+            // help blockrank
+            if (args[1].equalsIgnoreCase("blockrank")) {
+                player.sendMessage("§7This sets the specific rank needed to either");
+                player.sendMessage("§7interact with or place/break blocks. Used in");
+                player.sendMessage("§7conjunction with friends you can allow them");
+                player.sendMessage("§7access to certain blocks.");
+                player.sendMessage("§a[f] cbr, lbr, and br are for block place/break ---");
+                player.sendMessage("§a[f] cbru, lbru, and bru are for block interact ---");
+                player.sendMessage("§acbr or cbrus§r - clear block ranks for current claim");
+                player.sendMessage("§albr or lbru§r - list block ranks for current claim");
+                player.sendMessage("§abr or bru§r <rank> <typeID> <dataId(optional)> - or hold item in hand and just give <rank>");
+                return;
+            }
+            
+            // help zap
+            if (args[1].equalsIgnoreCase("zap")) {
+                player.sendMessage("§7This is used to assault another faction. This is a");
+                player.sendMessage("§7alternative to using nukes/tnt/explosives. You can");
+                player.sendMessage("§7not zap a faction that is lower in power than your");
+                player.sendMessage("§7own faction!");
+                player.sendMessage("§asetzaprank§r - set rank needed to issue /zap commands");
+                player.sendMessage("§ashowzaps§r - shows incoming and outgoing zaps");
+                player.sendMessage("§azap§r <faction> <amount> - zap faction's power using your own power");
+                player.sendMessage("§asetmrz§r <rank> - set minimum rank to zap");
+                return;
+            }
+            
+            // help home
+            if (args[1].equalsIgnoreCase("home")) {
+                player.sendMessage("§7These are important commands which allow you to set");
+                player.sendMessage("§7a faction home so that other players can use the");
+                player.sendMessage("§7command /f home to teleport home. This commands");
+                player.sendMessage("§7consume 10% of your faction power. On some servers");
+                player.sendMessage("§7you may be able to use a bed to save faction power!");
+                player.sendMessage("§asetmrsh§r - sets minimum rank to use /f sethome");
+                player.sendMessage("§asethome§r - set home for faction for teleport cmds");
+                player.sendMessage("§ahome§r - short for tptp <yourname> home");                
+                return;
+            }
+            
+            // help teleport
+            if (args[1].equalsIgnoreCase("teleport")) {
+                player.sendMessage("§7These are the teleport commands. You can teleport to");
+                player.sendMessage("§7your faction home, to spawn, or to another player.");
+                player.sendMessage("§7These commands consume 10% of your faction power.");
+                player.sendMessage("§7You also can not teleport to a player in your faction");
+                player.sendMessage("§7who is a higher rank than you. They must teleport you");
+                player.sendMessage("§7to them. You can teleport to someone of equal or lower");
+                player.sendMessage("§7rank than your self.");
+                player.sendMessage("§atptp§r <player> <player|home> - teleport player to player ");
+                player.sendMessage("§ahome§r - short for tptp <yourname> home");
+                player.sendMessage("§aspawn§r - short for tptp <yourname> spawn");
+                return;
+            }
+            
+            // help anchors
+            if (args[1].equalsIgnoreCase("anchors")) {
+                player.sendMessage("§7Each faction can only place so many world anchors");
+                player.sendMessage("§7The current limit is 2 per faction. To see where");
+                player.sendMessage("§7anchors are that have been placed by players in your");
+                player.sendMessage("§7faction use the following command. To remove anchors");
+                player.sendMessage("§7that do not exist contact an administrator and tell");
+                player.sendMessage("§7them to use the special /resetwa command in the console.");
+                player.sendMessage("§ashowanchors§r - shows world anchors your faction has placed");
+                return;
+            }
+            
+            player.sendMessage(String.format("§7You specified help but the argument %s is not understood!", args[1]));
+            return;
+        }
+        
+        // no arguments / unknown command / help
+        player.sendMessage("§7Faction §bBasic§7 Commands");
+        player.sendMessage("§acharge§r - charge faction power from item");
+        player.sendMessage("§achkcharge§r - check how much charge from item");
+        player.sendMessage("§aunclaimall§r - unclaim all land");
+        player.sendMessage("§aunclaim§r - unclaim land claimed");
+        player.sendMessage("§aclaim§r - claim land standing on");
+        player.sendMessage("§adisband§r - disband faction");
+        player.sendMessage("§aleave§r - leave current faction");
+        player.sendMessage("§ajoin§r <faction> - join faction after invite");
+        player.sendMessage("§akick§r <player> - kick out of faction");
+        player.sendMessage("§ainvite§r <player> - invite to faction");
+        player.sendMessage("§acreate§r <name> - make new faction");
+        player.sendMessage("§7-------------------------------------");
+        player.sendMessage("§ahelp ranks§r - ranking commands");
+        player.sendMessage("§ahelp blockrank§r - block rank commands");
+        player.sendMessage("§ahelp friends§r - friend commands");
+        player.sendMessage("§ahelp zap§r - zap commands");
+        player.sendMessage("§ahelp anchors§r - anchor commands");
+        player.sendMessage("§ahelp home§r - home commands");
+        player.sendMessage("§ahelp teleport§r - teleport commands");
     }
 
     @Override
@@ -1636,7 +1712,7 @@ public class P extends JavaPlugin implements IFactionsProtection {
         
         if (args.length < 1) {
             if (sender instanceof Player)
-                displayHelp((Player)sender);
+                displayHelp((Player)sender, args);
             return false;
         }
         
@@ -2216,7 +2292,7 @@ public class P extends JavaPlugin implements IFactionsProtection {
             fp.rank = 1000;
             f.players.put(player.getName(), fp);
             
-            getServer().broadcastMessage(String.format("§7[f] %s created new faction %s", player.getName(), args[1]));
+            getServer().broadcastMessage(String.format("§7[f] %s created new faction %s!", player.getName(), args[1]));
             
             synchronized (factions) {
                 factions.put(args[1].toLowerCase(), f);
@@ -2247,7 +2323,7 @@ public class P extends JavaPlugin implements IFactionsProtection {
             }
             
             if (fc.faction != fp.faction) {
-                player.sendMessage(String.format("§7[f] This land is owned by %s", fp.faction.name));
+                player.sendMessage(String.format("§7[f] This land is owned by §c%s§7!", fp.faction.name));
                 return true;
             }
             
@@ -2269,7 +2345,7 @@ public class P extends JavaPlugin implements IFactionsProtection {
                     e = i.next();
                     tid = e.getKey();
                     if (e.getValue() >= fp.rank) {
-                        player.sendMessage(String.format("  Rank too low for [%d:%d]:%d", tid.typeId, tid.dataId, e.getValue()));
+                        player.sendMessage(String.format("§7 Rank too low for to clear %s[%d] at rank %d!", TypeIdToNameMap.getNameFromTypeId(tid.typeId), tid.dataId, e.getValue()));
                     } else {
                         i.remove();
                     }
@@ -2302,12 +2378,13 @@ public class P extends JavaPlugin implements IFactionsProtection {
             }
             
             if (cmd.equals("lbru")) {
+                player.sendMessage("§7[f] List §cInteraction§7 Block Rank For Claim");
                 m = fc.tidu;
             } else {
+                player.sendMessage("§7[f] List §cPlace/Break§7 Block Rank For Claim");
                 m = fc.tid;
             }
             
-            player.sendMessage("§7[f] List Block Rank For Current Claim");
             if (m != null) {
                 Iterator<Entry<TypeDataID, Integer>>         i;
                 Entry<TypeDataID, Integer>                   e;
@@ -2318,8 +2395,13 @@ public class P extends JavaPlugin implements IFactionsProtection {
                 while (i.hasNext()) {
                     e = i.next();
                     tid = e.getKey();
-                    
-                    player.sendMessage(String.format("  [%2d:*]    %d", tid.typeId, e.getValue()));
+                    player.sendMessage(String.format("§7For §c%s§7(§d%d§7) you need rank §c%d§7 or better.", TypeIdToNameMap.getNameFromTypeId(tid.typeId), tid.typeId, e.getValue()));
+                }
+                
+                if (cmd.equals("lbru")) {
+                    player.sendMessage("§7Use §d/f cbru§7 (to clear) and §d/f bru§7 to add to the list.");
+                } else {
+                    player.sendMessage("§7Use §d/f cbr§7 (to clear) and §d/f br§7 to add to the list.");
                 }
             }
             return true;
@@ -2377,7 +2459,11 @@ public class P extends JavaPlugin implements IFactionsProtection {
                 }
             } else {
                 if (player.getItemInHand().getTypeId() == 0) {
-                    player.sendMessage("§7[f] Either hold item in hand, or use /f blockrank <rank> <typeId> <dataId(optinal)>");
+                    if (cmd.equals("bru")) {
+                        player.sendMessage("§7[f] Either hold item in hand and use §c/f bru <rank>§7, or use §c/f br <rank> <typeId>§7");
+                    } else {
+                        player.sendMessage("§7[f] Either hold item in hand and use §c/f br <rank>§7, or use §c/f br <rank> <typeId>§7");
+                    }
                     return true;
                 }
                 typeId = player.getItemInHand().getTypeId();
@@ -2407,7 +2493,7 @@ public class P extends JavaPlugin implements IFactionsProtection {
             }
             
             m.put(tdir, rank);
-            player.sendMessage(String.format("§7[f] Block %d:%d at rank %d added to current claim.", typeId, typeData, rank));
+            player.sendMessage(String.format("§7[f] Block %s[%d] at rank %d added to current claim.", TypeIdToNameMap.getNameFromTypeId(typeId), typeId, typeData, rank));
             return true;
         }
             
@@ -3036,7 +3122,7 @@ public class P extends JavaPlugin implements IFactionsProtection {
             player.sendMessage(String.format("§6Faction:§r%s §6MinimumBuildRank:§r%d §6MinimumUseRank:§r%d", fc.faction.name, fc.mrb, fc.mru));
             return true;
         }
-        displayHelp(player);
+        displayHelp(player, args);
         return false;
     }
     
