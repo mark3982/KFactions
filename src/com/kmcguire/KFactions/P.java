@@ -276,7 +276,7 @@ public class P extends JavaPlugin {
             f.power = cfg_root.getDouble("power");
             f.worthEMC = cfg_root.getLong("worthEMC");
             
-            allfactions.put(f.name, f);
+            allfactions.put(f.name.toLowerCase(), f);
         }
         
         // iterate through the zaps
@@ -2750,8 +2750,8 @@ public class P extends JavaPlugin {
                 getServer().broadcastMessage(String.format("§7[f] Ownership of %s was handed to %s at random.", fp.faction.name, fp.name));
             }
             
-            fp.faction.players.remove(fp.name);
-            sendFactionMessage(fp.faction, String.format("§7[f] %s has left the faction", fp.name));
+            getServer().broadcastMessage(String.format("§7[f] §a%s§r has left the faction §a%s§r!", fp.name, fp.faction.name));
+            fp.faction.players.remove(fp.name);            
             return true;
         }
         
@@ -2770,9 +2770,11 @@ public class P extends JavaPlugin {
                 return true;
             }
             
+            // why the hell am i doing this? --kmcguire
             fp.faction.chunks = new HashMap<String, Map<Long, FactionChunk>>(); 
             
-            getServer().broadcastMessage(String.format("§7[f] %s has been disbanded", fp.faction.name));
+            getServer().broadcastMessage(String.format("§7[f] §a%s§r has disbanded the faction §a%s§r!", fp.name, fp.faction.name));
+            
             factions.remove(fp.faction.name.toLowerCase());
             return true;
         }
