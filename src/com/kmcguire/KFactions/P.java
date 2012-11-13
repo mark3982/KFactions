@@ -1443,7 +1443,7 @@ public class P extends JavaPlugin {
                 player.sendMessage("§akick§r <player> - kick out of faction");
                 player.sendMessage("§dinvite§r <player> - invite to faction");
                 player.sendMessage("§dcreate§r <name> - make new faction");
-                player.sendMessage("§daseechunk§r <name> - walls the chunk in glass");
+                player.sendMessage("§dseechunk§r <name> - walls the chunk in glass");
                 player.sendMessage("§7-------------------------------------");
                 return;
             }
@@ -1505,7 +1505,7 @@ public class P extends JavaPlugin {
         
         // no arguments / unknown command / help
         player.sendMessage("§7-------------------------------------");
-        player.sendMessage("§7Faction §bBasic§7 Commands");
+        player.sendMessage("§7Faction §bBasi3c§7 Commands");
         player.sendMessage("§7-------------------------------------");
         player.sendMessage("§dhelp tut§r - short tutorial");
         player.sendMessage("§7-------------------------------------");
