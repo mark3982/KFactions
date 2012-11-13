@@ -2487,13 +2487,13 @@ public class P extends JavaPlugin {
             /// UPGRADE CODE BLOCK
             if (m.containsKey(tdir)) {
                 if (m.get(tdir) >= fp.rank) {
-                    player.sendMessage(String.format("§7[f] Block rank exists [%d] and is equal or higher than your rank [%d].", fc.tid.get(tdir), fp.rank));
+                    player.sendMessage(String.format("§7[f] Block rank exists §a%d§r and is equal or higher than your rank §b%d§r.", fc.tid.get(tdir), fp.rank));
                     return true;
                 }
             }
             
             m.put(tdir, rank);
-            player.sendMessage(String.format("§7[f] Block %s[%d] at rank %d added to current claim.", TypeIdToNameMap.getNameFromTypeId(typeId), typeId, typeData, rank));
+            player.sendMessage(String.format("§7[f] Block §a%s§r[%d] at rank §a%d§r added to current claim.", TypeIdToNameMap.getNameFromTypeId(typeId), typeId, rank));
             return true;
         }
             
