@@ -32,6 +32,6 @@ public class TypeDataID implements Serializable {
     
     @Override
     public int hashCode() {
-        return typeId | (int)dataId;
+        return typeId;
     }
 }

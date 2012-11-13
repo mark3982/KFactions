@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.command.Command;
@@ -37,6 +38,7 @@ import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerPickupItemEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 
 class DataDumper implements Runnable {
@@ -879,13 +881,14 @@ public class P extends JavaPlugin implements IFactionsProtection {
             getServer().getLogger().info(String.format("int:%d:%d", tid.typeId, tid.dataId));
             if (fchunk.tidu.containsKey(tid)) {
                 if (rank < fchunk.tidu.get(tid)) {
-                    player.sendMessage(String.format("§7[f] Land block rank for block is %d and your rank is %d.", fchunk.tid.get(tid), rank));
+                    player.sendMessage(String.format("§7[f] Your rank[%d] is less than rank %d for block type %d.", rank, fchunk.tid.get(tid), tid));
                     if (!fchunk.tidudefreject)
                         event.setCancelled(true);
                     else
                         event.setCancelled(false);
                     return;
                 }
+                return;
             }
             //
         }
@@ -994,6 +997,7 @@ public class P extends JavaPlugin implements IFactionsProtection {
                         event.setCancelled(false);
                     return;
                 }
+                return;
             }
         }        
         
@@ -1081,6 +1085,7 @@ public class P extends JavaPlugin implements IFactionsProtection {
                         event.setCancelled(false);
                     return;
                 }
+                return;
             }
         }
         
@@ -2314,7 +2319,7 @@ public class P extends JavaPlugin implements IFactionsProtection {
                     e = i.next();
                     tid = e.getKey();
                     
-                    player.sendMessage(String.format("  [%2d:%2d]    %d", tid.typeId, tid.dataId, e.getValue()));
+                    player.sendMessage(String.format("  [%2d:*]    %d", tid.typeId, e.getValue()));
                 }
             }
             return true;
@@ -2948,7 +2953,7 @@ public class P extends JavaPlugin implements IFactionsProtection {
             fp = getFactionPlayer(player.getName());
             
             if (args.length < 2 && fp == null) {
-                player.sendMessage("§7[f] You are not in a faction, and you did not specify a faction (optional).");
+                player.sendMessage("§7[f] You must either specify a faction or be in a faction!");
                 return true;
             }
             
@@ -2957,7 +2962,7 @@ public class P extends JavaPlugin implements IFactionsProtection {
                 if (f == null) {
                     fp = getFactionPlayer(args[1]);
                     if (fp == null) {
-                        player.sendMessage(String.format("§7[f] The player %s is not in a faction.", args[1]));
+                        player.sendMessage(String.format("§7[f] Could not find a faction or player named '%s'!", args[1]));
                         return true;
                     }
                     f = fp.faction;
@@ -2981,7 +2986,7 @@ public class P extends JavaPlugin implements IFactionsProtection {
                     (int)(landPowerCostPerHour * f.chunks.size()), 
                     (int)getFactionPower(f)
                 ));
-                player.sendMessage(String.format("§6TimeLeft: §7%d/hr", 
+                player.sendMessage(String.format("§6TimeLeft: §7%d hours", 
                      (int)(getFactionPower(f) / (landPowerCostPerHour * f.chunks.size()))
                 ));
             } else {
