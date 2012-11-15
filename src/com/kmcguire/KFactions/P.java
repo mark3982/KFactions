@@ -8,6 +8,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -15,15 +16,14 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import org.bukkit.Chunk;
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.InvalidConfigurationException;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.craftbukkit.util.LongHash;
 import org.bukkit.entity.Entity;
@@ -77,7 +77,8 @@ public class P extends JavaPlugin {
     public HashMap<Long, Integer>                emcMap;
     
     // configuration
-    public double       landPowerCostPerHour;
+    public double           landPowerCostPerHour;
+    public HashSet<String>  worldsEnabled; 
     
     public Location    gspawn = null;
     
@@ -532,8 +533,53 @@ public class P extends JavaPlugin {
         RandomAccessFile                raf;
         Iterator<Entry<Long, Integer>>  i;
         Entry<Long, Integer>            e;
+        FileConfiguration               cfg;
+        File                            fcfg;
+        List<String>                    we;
         
         seeChunkLast = new HashMap<String, Long>();
+        
+        fcfg = new File("kfactions.config.yml");
+        
+        cfg = new YamlConfiguration();
+        
+        try {
+            if (fcfg.exists()) {
+                cfg.load(fcfg);
+            }
+            
+            if (cfg.contains("landPowerCostPerHour"))
+                landPowerCostPerHour = cfg.getInt("landPowerCostPerHour");
+            else
+                landPowerCostPerHour = 85.33;
+            if (cfg.contains("worldsEnabled"))
+                we = cfg.getStringList("worldsEnabled");
+            else {
+                we = new ArrayList();
+                we.add("world");
+                we.add("world_nether");
+                we.add("world_the_end");
+            }
+            
+            worldsEnabled = new HashSet<String>();
+            for (String wes : we) {
+                worldsEnabled.add(wes);
+            }
+            
+            cfg.set("landPowerCostPerHour", landPowerCostPerHour);
+            cfg.set("worldsEnabled", we);
+            
+            cfg.save(fcfg);
+        } catch (InvalidConfigurationException ex) {
+            ex.printStackTrace();
+            return;
+        } catch (FileNotFoundException ex) {
+            ex.printStackTrace();
+            return;
+        } catch (IOException ex) {
+            ex.printStackTrace();
+            return;
+        }
         
         
         // ensure that emcvals.txt exists
@@ -581,11 +627,6 @@ public class P extends JavaPlugin {
         } catch (IOException ex) {
             ex.printStackTrace();
         }
-        
-        
-        
-        // configuration
-        landPowerCostPerHour = 8192.0 / 24.0 / 4.0;
 
         getLogger().info("reading plugin.gspawn.factions");
         file = new File("plugin.gspawn.factions");
@@ -708,8 +749,6 @@ public class P extends JavaPlugin {
                     flist = new Entry[factions.size()];
                     factions.entrySet().toArray(flist);
                 }
-                
-                getServer().getLogger().info("§7[f] running ticker for flist");
                 
                 getServer().getScheduler().scheduleAsyncDelayedTask(p, new Runnable() {
                     @Override
@@ -1248,15 +1287,18 @@ public class P extends JavaPlugin {
         long                                            ctime;
         double                                          delta;
         double                                          powcon;                
+        int                                             landcnt;
         
         ctime =  System.currentTimeMillis();
         
         delta = (double)(ctime - f.lpud) / 1000.0d / 60.0d / 60.0d;
         
-        // BASED OFF ONE DIAMOND PROVIDING 24HRS OF POWER FOR ONE
-        // LAND CLAIM
-        //powcon = delta * (double)f.chunks.size() * (8192.0 / 24.0);
-        powcon = delta * (double)f.chunks.size() * landPowerCostPerHour;
+        landcnt = 0;
+        for (Map m : f.chunks.values()) {
+            landcnt += m.size();
+        }
+        
+        powcon = delta * (double)landcnt * landPowerCostPerHour;
         
         synchronized (f) {
             f.power = f.power - powcon;
@@ -1266,7 +1308,7 @@ public class P extends JavaPlugin {
             f.lpud = ctime;
 
             if ((f.flags & NODECAY) == NODECAY) {
-                return (f.chunks.size() + 1) * 8192.0;
+                return (double)(landcnt + 1) * 8192.0;
             }
         }
         return f.power;
@@ -1336,7 +1378,12 @@ public class P extends JavaPlugin {
             if (args[1].equalsIgnoreCase("ranks")) {
                 player.sendMessage("§7------------RANKS--------------------");
                 player.sendMessage("§7These commands will change a player's rank. They also set");
-                player.sendMessage("§7the required rank needed to perform certain commands.");
+                player.sendMessage("§7the required rank needed to perform certain commands. The");
+                player.sendMessage("§7rank is a number. To see your rank type §a/f who§r and");
+                player.sendMessage("§7find your name and in brackets is your rank. You also can");
+                player.sendMessage("§7not set someone equal to or above your own rank. Whoever");
+                player.sendMessage("§7creates the faction gets the rank of 1000 which no one else");
+                player.sendMessage("§7can be higher than, unless an OP performs the setrank command");
                 player.sendMessage("§7-------------------------------------");
                 player.sendMessage("§dsetrank§r <player> <rank> - set new rank");
                 player.sendMessage("§dcbrank§r <rank> - set chunk build rank");
@@ -1505,10 +1552,11 @@ public class P extends JavaPlugin {
         
         // no arguments / unknown command / help
         player.sendMessage("§7-------------------------------------");
-        player.sendMessage("§7Faction §bBasi3c§7 Commands");
+        player.sendMessage("§7Faction Help Main Menu");
         player.sendMessage("§7-------------------------------------");
         player.sendMessage("§dhelp tut§r - short tutorial");
         player.sendMessage("§7-------------------------------------");
+        player.sendMessage("§dhelp chat§r - chat commands");
         player.sendMessage("§dhelp basic§r - basic commands");
         player.sendMessage("§ahelp ranks§r - ranking commands");
         player.sendMessage("§ahelp blockrank§r - block rank commands");
@@ -1518,8 +1566,8 @@ public class P extends JavaPlugin {
         player.sendMessage("§dhelp home§r - home commands");
         player.sendMessage("§dhelp teleport§r - teleport commands");
         player.sendMessage("§7-------------------------------------");
-        player.sendMessage("§7For example: /f help basic");
-        player.sendMessage("§7For example: /f help friends");
+        player.sendMessage("§7For example: §a/f help basic§r");
+        player.sendMessage("§7For example: §a/f help friends§r");
         player.sendMessage("§7-------------------------------------");
     }
     
@@ -1806,6 +1854,12 @@ public class P extends JavaPlugin {
         
         player = (Player)sender;
         
+        // enforce world restrictions
+        if (!worldsEnabled.contains(player.getWorld().getName())) {
+            player.sendMessage("§7[f] This world has not been enabled for KFactions!");
+            return true;
+        }
+        
         if (command.getName().equals("home")) {
             player.sendMessage("§7[f] Use /f home (requires a faction)");
             return true;
@@ -1850,6 +1904,10 @@ public class P extends JavaPlugin {
                     (System.currentTimeMillis() - wal.timePlaced) / 1000 / 60 / 60 / 24
                 ));
             }
+            return true;
+        }
+        
+        if (cmd.equals("cf")) {
             return true;
         }
         
@@ -2529,7 +2587,6 @@ public class P extends JavaPlugin {
             getServer().getScheduler().scheduleSyncDelayedTask(this, new Runnable() {
                 @Override
                 public void run() {
-                    getLogger().info("OK sync running!");
                     showPlayerChunk(player, true);
                 }
             }, 20 * 10);
