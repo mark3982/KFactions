@@ -2411,12 +2411,13 @@ public class P extends JavaPlugin {
             
             ze = new ZapEntry();
             
+            // no longer will it create fake zaps
+            // instead it will warn the player of
+            // the problem and not allow them to
+            // zap the target faction
             if (tf.power < f.power) {
-                // target faction had less than us
-                ze.isFake = true;
-            } else {
-                // target faction has more than us (or equal)
-                ze.isFake = false;
+                player.sendMessage("§7[f] That faction has less power than you! You can zap only if they have more than you.");
+                return true;
             }
             
             ze.amount = (double)amount;
