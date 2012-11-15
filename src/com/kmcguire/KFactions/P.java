@@ -1565,6 +1565,7 @@ public class P extends JavaPlugin {
         player.sendMessage("§ahelp anchors§r - anchor commands");
         player.sendMessage("§dhelp home§r - home commands");
         player.sendMessage("§dhelp teleport§r - teleport commands");
+        player.sendMessage("§ec <message>§r - faction chat message");
         player.sendMessage("§7-------------------------------------");
         player.sendMessage("§7For example: §a/f help basic§r");
         player.sendMessage("§7For example: §a/f help friends§r");
@@ -1789,7 +1790,7 @@ public class P extends JavaPlugin {
                 getServer().getLogger().info(String.format("§7[f] NODECAY toggled ON on %s", args[1]));
                 return true;
             }
-            
+                        
             if (cmd.equals("yank")) {
                 // f yank <faction> <player>
                 Faction                 f;
@@ -1881,6 +1882,29 @@ public class P extends JavaPlugin {
         //this.getServer().getPluginManager().getPlugins()[0].
         //setmri, setmrc, setmrsp, setmrtp, 
         //sethome, tptp
+        
+            if (cmd.equals("c")) {
+                StringBuffer        sb;
+                FactionPlayer       fp;
+                
+                fp = getFactionPlayer(player.getName());
+                
+                if (fp == null) {
+                    player.sendMessage("§7[f] §7You are not in a faction.");
+                    return true;
+                }
+                
+                sb = new StringBuffer();
+                
+                for (int x = 1; x < args.length; ++x) {
+                    sb.append(args[x]);
+                    sb.append(" ");
+                }
+                
+                sendFactionMessage(fp.faction, String.format("§d[Faction]§r§e %s: %s", player.getDisplayName(), sb.toString()));
+                return true;
+            }
+
         
         if (cmd.equals("showanchors")) {
             Iterator<WorldAnchorLocation>       i;
