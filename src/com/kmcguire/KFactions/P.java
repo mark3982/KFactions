@@ -122,9 +122,7 @@ public class P extends JavaPlugin {
         allfactions = new HashMap<String, Faction>();
 
         try {
-            getLogger().info("A");
             cfg.load(fdata);
-            getLogger().info("B");
         } catch (FileNotFoundException ex) {
             return null;
         } catch (IOException ex) {
@@ -714,7 +712,6 @@ public class P extends JavaPlugin {
         // YAML file for us to load from
         if (fdata.exists()) {
             try {
-                getLogger().info("reading now");
                 factions = LoadHumanReadableData();
             } catch (Exception ex) {
                 factions = new HashMap<String, Faction>();
