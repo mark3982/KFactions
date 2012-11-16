@@ -69,6 +69,7 @@ public class P extends JavaPlugin {
     public static final File                    fdata;
     
     private static HashMap<String, Long>        seeChunkLast;
+    private HashMap<String, Long>               scannerWait;
     
     static final int    NOPVP =        0x01;
     static final int    NOBOOM =       0x02;
@@ -79,6 +80,9 @@ public class P extends JavaPlugin {
     // configuration
     public double           landPowerCostPerHour;
     public HashSet<String>  worldsEnabled; 
+    boolean                 enabledScanner;
+    long                    scannerWaitTime;
+    double                  scannerChance;
     
     public Location    gspawn = null;
     
@@ -538,6 +542,7 @@ public class P extends JavaPlugin {
         List<String>                    we;
         
         seeChunkLast = new HashMap<String, Long>();
+        scannerWait = new HashMap<String, Long>();
         
         fcfg = new File("kfactions.config.yml");
         
@@ -547,6 +552,21 @@ public class P extends JavaPlugin {
             if (fcfg.exists()) {
                 cfg.load(fcfg);
             }
+                
+            if (cfg.contains("enabledScanner"))
+                enabledScanner = cfg.getBoolean("enabledScanner");
+            else
+                enabledScanner = true;
+            
+            if (cfg.contains("scannerChance")) 
+                scannerChance = cfg.getDouble("scannerChance");
+            else
+                scannerChance = 0.01;
+    
+            if (cfg.contains("scannerWaitTime"))
+                scannerWaitTime = cfg.getLong("scannerWaitTime");
+            else
+                scannerWaitTime = 60 * 60;
             
             if (cfg.contains("landPowerCostPerHour"))
                 landPowerCostPerHour = cfg.getInt("landPowerCostPerHour");
@@ -566,8 +586,11 @@ public class P extends JavaPlugin {
                 worldsEnabled.add(wes);
             }
             
+            cfg.set("scannerChance", scannerChance);
             cfg.set("landPowerCostPerHour", landPowerCostPerHour);
             cfg.set("worldsEnabled", we);
+            cfg.set("enabledScanner", enabledScanner);
+            cfg.set("scannerWaitTime", scannerWaitTime);
             
             cfg.save(fcfg);
         } catch (InvalidConfigurationException ex) {
@@ -742,8 +765,6 @@ public class P extends JavaPlugin {
                 isAsyncDone = false;
                 
                 p = ___p;
-                
-                getServer().getLogger().info("running flist dumper");
                 
                 synchronized (p.factions) {
                     flist = new Entry[factions.size()];
@@ -1565,7 +1586,7 @@ public class P extends JavaPlugin {
         player.sendMessage("§ahelp anchors§r - anchor commands");
         player.sendMessage("§dhelp home§r - home commands");
         player.sendMessage("§dhelp teleport§r - teleport commands");
-        player.sendMessage("§ec <message>§r - faction chat message");
+        player.sendMessage("§e/f c <message>§r - faction chat message");
         player.sendMessage("§7-------------------------------------");
         player.sendMessage("§7For example: §a/f help basic§r");
         player.sendMessage("§7For example: §a/f help friends§r");
@@ -1883,27 +1904,27 @@ public class P extends JavaPlugin {
         //setmri, setmrc, setmrsp, setmrtp, 
         //sethome, tptp
         
-            if (cmd.equals("c")) {
-                StringBuffer        sb;
-                FactionPlayer       fp;
-                
-                fp = getFactionPlayer(player.getName());
-                
-                if (fp == null) {
-                    player.sendMessage("§7[f] §7You are not in a faction.");
-                    return true;
-                }
-                
-                sb = new StringBuffer();
-                
-                for (int x = 1; x < args.length; ++x) {
-                    sb.append(args[x]);
-                    sb.append(" ");
-                }
-                
-                sendFactionMessage(fp.faction, String.format("§d[Faction]§r§e %s: %s", player.getDisplayName(), sb.toString()));
+        if (cmd.equals("c")) {
+            StringBuffer        sb;
+            FactionPlayer       fp;
+
+            fp = getFactionPlayer(player.getName());
+
+            if (fp == null) {
+                player.sendMessage("§7[f] §7You are not in a faction.");
                 return true;
             }
+
+            sb = new StringBuffer();
+
+            for (int x = 1; x < args.length; ++x) {
+                sb.append(args[x]);
+                sb.append(" ");
+            }
+
+            sendFactionMessage(fp.faction, String.format("§d[Faction]§r§e %s: %s", player.getDisplayName(), sb.toString()));
+            return true;
+        }
 
         
         if (cmd.equals("showanchors")) {
@@ -1931,7 +1952,87 @@ public class P extends JavaPlugin {
             return true;
         }
         
-        if (cmd.equals("cf")) {
+        if (cmd.equals("scan")) {
+            double          chance;
+            double          Xmax, Xmin, Zmax, Zmin;
+            int             wndx, cndx, fndx;
+            int             realX, realZ;
+            FactionPlayer   fp;
+            long            ct;
+            long            sr;
+
+            fp = getFactionPlayer(player.getName());
+            
+            if (fp == null) {
+                player.sendMessage("§7[f] §7You are not in a faction.");
+                return true;
+            }
+            
+            if (!enabledScanner) {
+                player.sendMessage("§7[f] The scanner feature is not enabled on this server!");
+                return true;
+            }
+            
+            ct = System.currentTimeMillis();
+            
+            if (scannerWait.containsKey(fp.faction.name)) {
+                sr = ct - scannerWait.get(fp.faction.name);
+                if (sr < (1000 * scannerWaitTime)) {
+                    player.sendMessage(String.format(
+                            "§7[f] You need to wait %d more seconds!",
+                            ((1000 * scannerWaitTime) - sr) / 1000
+                    ));
+                    return true;
+                }
+            }
+            
+            // scan all factions and all land claims to build minimum and maximum bounds
+            fndx = (int)(Math.random() * factions.size());
+            realX = 0;
+            realZ = 0;
+            Xmax = 0;
+            Zmax = 0;
+            Xmin = 0;
+            Zmin = 0;
+            for (Faction f : factions.values()) {
+                // pick random claim if any claim exists
+                wndx = (int)(Math.random() * f.chunks.size());
+                for (String wn : f.chunks.keySet()) {
+                    cndx = (int)(Math.random() * f.chunks.get(wn).size());
+                    for (FactionChunk fc : f.chunks.get(wn).values()) {
+                        if (cndx == 0 && wndx == 0 && fndx == 0) {
+                            realX = fc.x * 16;
+                            realZ = fc.z * 16;
+                        }
+
+                        Xmax = Xmax == 0 || fc.x > Xmax ? fc.x : Xmax;
+                        Zmax = Zmax == 0 || fc.z > Zmax ? fc.z : Zmax;
+                        Xmin = Xmin == 0 || fc.x < Xmin ? fc.x : Xmin;
+                        Zmin = Zmin == 0 || fc.z < Zmin ? fc.z : Zmin;                        
+                        --cndx;
+                    }
+                    --wndx;
+                }
+                --fndx;
+            }
+            
+            if (Math.random() > scannerChance) {
+                Xmax = Xmax * 16;
+                Xmin = Xmin * 16;
+                Zmax = Zmax * 16;
+                Zmin = Zmin * 16;
+                realX = (int)(Math.random() * (double)(Xmax - Xmin) + (double)Xmin);
+                realZ = (int)(Math.random() * (double)(Zmax - Zmin) + (double)Zmin);
+                realX = (realX >> 4) << 4;
+                realZ = (realZ >> 4) << 4;
+            }
+            
+            scannerWait.put(fp.faction.name, ct);
+            sendFactionMessage(fp.faction, String.format(
+                    "§7 The world anomally scanner result is §a%d:%d§r.",
+                    realX, realZ
+            ));
+            
             return true;
         }
         
