@@ -29,6 +29,7 @@ import org.bukkit.craftbukkit.util.LongHash;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
@@ -70,6 +71,7 @@ public class P extends JavaPlugin {
     
     private static HashMap<String, Long>        seeChunkLast;
     private HashMap<String, Long>               scannerWait;
+    private HashMap<String, FactionPlayer>      fpquickmap;
     
     static final int    NOPVP =        0x01;
     static final int    NOBOOM =       0x02;
@@ -83,6 +85,7 @@ public class P extends JavaPlugin {
     boolean                 enabledScanner;
     long                    scannerWaitTime;
     double                  scannerChance;
+    boolean                 friendlyFire;
     
     public Location    gspawn = null;
     
@@ -581,11 +584,17 @@ public class P extends JavaPlugin {
                 we.add("world_the_end");
             }
             
+            if (cfg.contains("friendlyFire"))
+                friendlyFire = cfg.getBoolean("friendlyFire");
+            else
+                friendlyFire = false;
+            
             worldsEnabled = new HashSet<String>();
             for (String wes : we) {
                 worldsEnabled.add(wes);
             }
             
+            cfg.set("friendlyFire", friendlyFire);
             cfg.set("scannerChance", scannerChance);
             cfg.set("landPowerCostPerHour", landPowerCostPerHour);
             cfg.set("worldsEnabled", we);
@@ -1062,22 +1071,7 @@ public class P extends JavaPlugin {
         return;       
     }
     
-    public HashSet<Item>        peacefulItems;
-    
-    public void handleItemSpawn(ItemSpawnEvent event) {
-        // check if item spawns on peaceful faction
-        // ground and if so add item to special peaceful
-        // item set
-        //event.getEntity();
-    }
-    
-    public void handlePlayerPickupItem(PlayerPickupItemEvent event) {
-        // is this item in the peaceful item set? if so then
-        // is this player in a peaceful faction? if so then
-        // let them pick it up and if not then forbid them to
-        // pick this item up
-    }
-    
+    @EventHandler
     public void handleBlockBreak(BlockBreakEvent event) {
         int             x, z;
         World           w;
@@ -1151,6 +1145,7 @@ public class P extends JavaPlugin {
         return;
     }
     
+    @EventHandler
     public void handleEntityExplodeEvent(EntityExplodeEvent event) {
         List<Block>     blocks;
         Iterator<Block> iter;
@@ -1214,12 +1209,14 @@ public class P extends JavaPlugin {
         return true;
     }
     
+    @EventHandler
     public void handleEntityDamageEntity(EntityDamageByEntityEvent event) {
-        Entity          e;
-        Player          p;
+        Entity          e, ed;
+        Player          p, pd;
         Location        pl;
         int             cx, cz;
         FactionChunk    fc;
+        FactionPlayer   fp, fpd;
         
         e = event.getEntity();
         
@@ -1227,6 +1224,26 @@ public class P extends JavaPlugin {
             return;
         
         p = (Player)e;
+        
+        ed = event.getDamager();
+        
+        // check for same team combat
+        if (!friendlyFire && (ed instanceof Player)) {
+            pd = (Player)ed;
+            
+            fp = getFactionPlayer(p.getName());
+            fpd = getFactionPlayer(pd.getName());
+            
+            if (fp != null && fpd != null) {
+                // check if same faction
+                if (fp.faction == fpd.faction) {
+                    event.setCancelled(true);
+                    return;
+                }
+                // check if allied faction
+                // TODO
+            }
+        }
         
         pl = p.getLocation();
         
@@ -1249,12 +1266,14 @@ public class P extends JavaPlugin {
         return;
     }
     
+    @EventHandler
     public void handlePlayerRespawnEvent(PlayerRespawnEvent event) {
         if (gspawn == null)
             return;
         event.setRespawnLocation(gspawn);
     }
     
+    @EventHandler
     public void handlePlayerMove(PlayerMoveEvent event) {
         int             fx, fz;
         int             tx, tz;
@@ -1268,11 +1287,11 @@ public class P extends JavaPlugin {
         tx = event.getTo().getBlockX() >> 4;
         tz = event.getTo().getBlockZ() >> 4;
         
-        player = event.getPlayer();
-        
         // KEEPS US FROM EATING TONS OF CPU CYCLES WHEN ALL WE NEED TO DO
         // IS CHECK ON CHUNK TRANSITIONS
         if ((fx != tx) || (fz != tz)) {
+            player = event.getPlayer();
+            
             fc = null;
             tc = null;
             
