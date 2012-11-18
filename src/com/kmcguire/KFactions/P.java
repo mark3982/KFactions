@@ -84,7 +84,7 @@ public class P extends JavaPlugin {
     long                    scannerWaitTime;
     double                  scannerChance;
     boolean                 friendlyFire;
-    HashSet<String>         noOverClaim;
+    HashSet<String>         noGriefPerWorld;
     
     public Location     gspawn = null;
     
@@ -594,10 +594,10 @@ public class P extends JavaPlugin {
             else
                 enabledScanner = true;
             
-            noOverClaim = new HashSet<String>();
+            noGriefPerWorld = new HashSet<String>();
             if (cfg.contains("noOverClaim")) {
                  for (String worldName : cfg.getStringList("noOverClaim")) {
-                     noOverClaim.add(worldName);
+                     noGriefPerWorld.add(worldName);
                  }
             }
             
@@ -634,12 +634,12 @@ public class P extends JavaPlugin {
                 worldsEnabled.add(wes);
             }
             
-            cfg.set("noOverClaim", noOverClaim);
+            cfg.set("noOverClaim", noGriefPerWorld);
             
             ArrayList<String>       tmp;
             
             tmp = new ArrayList<String>();
-            for (String worldName : noOverClaim) {
+            for (String worldName : noGriefPerWorld) {
                 tmp.add(worldName);
             }
             
@@ -1216,6 +1216,10 @@ public class P extends JavaPlugin {
             fchunk = getFactionChunk(w, x, z);
             if (fchunk != null) {
                 synchronized (fchunk.faction) {
+                    if (noGriefPerWorld.contains(w.getName())) {
+                        iter.remove();
+                        continue;
+                    }
                     if ((fchunk.faction.flags & NOBOOM) == NOBOOM) {
                         // remove explosion effecting 
                         // this block since it is protected
@@ -3209,7 +3213,7 @@ public class P extends JavaPlugin {
                     return true;
                 }
                 
-                if (noOverClaim.contains(player.getWorld().getName())) {
+                if (noGriefPerWorld.contains(player.getWorld().getName())) {
                     player.sendMessage("§7[f] This world does not allow claiming of another faction's land!");
                     return true;
                 }
