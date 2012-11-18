@@ -27,19 +27,17 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.craftbukkit.util.LongHash;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
-import org.bukkit.event.entity.ItemSpawnEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
-import org.bukkit.event.player.PlayerPickupItemEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 
 class DataDumper implements Runnable {
@@ -86,8 +84,9 @@ public class P extends JavaPlugin {
     long                    scannerWaitTime;
     double                  scannerChance;
     boolean                 friendlyFire;
+    HashSet<String>         noOverClaim;
     
-    public Location    gspawn = null;
+    public Location     gspawn = null;
     
     public boolean      upgradeCatch;  
     
@@ -111,6 +110,7 @@ public class P extends JavaPlugin {
         ConfigurationSection                cfg_walocs;
         ConfigurationSection                cfg_zapin;
         ConfigurationSection                cfg_zapout;
+        List<String>                        cfg_slist;
         Map<String, Object>                 m;
         Faction                             f;
         FactionChunk                        fc;
@@ -138,6 +138,8 @@ public class P extends JavaPlugin {
             
             f = new Faction();
             f.chunks = new HashMap<String, Map<Long, FactionChunk>>();
+            
+            f.lpud = System.currentTimeMillis();
             
             // access all of the list/array/map type stuff
             cfg_chunks = cfg_root.getConfigurationSection("chunks");
@@ -193,6 +195,8 @@ public class P extends JavaPlugin {
                 }
             }
             
+            
+            
             cfg_friends = cfg_root.getConfigurationSection("friends");
             
             f.friends = new HashMap<String, Integer>();
@@ -200,6 +204,27 @@ public class P extends JavaPlugin {
             if (cfg_friends != null) {
                 for (Entry<String, Object> en : cfg_friends.getValues(false).entrySet()) {
                     f.friends.put(en.getKey(), (Integer)en.getValue());
+                }
+            }
+            
+            
+            cfg_slist = cfg_root.getStringList("allies");
+            
+            f.allies = new HashSet<String>();
+            
+            if (cfg_slist != null) {
+                for (String name : cfg_slist) {
+                    f.allies.add(name);
+                }
+            }
+            
+            cfg_slist = cfg_root.getStringList("enemies");
+            
+            f.enemies = new HashSet<String>();
+            
+            if (cfg_slist != null) {
+                for (String name : cfg_slist) {
+                    f.enemies.add(name);
                 }
             }
             
@@ -483,6 +508,16 @@ public class P extends JavaPlugin {
             // worthEMC
             raf.writeBytes(String.format(" worthEMC: %d\n", f.worthEMC));
             
+            raf.writeBytes(" allies:\n");
+            for (String name : f.allies) {
+                raf.writeBytes(String.format("  - %s", name));
+            }
+            
+            raf.writeBytes(" enemies:\n");
+            for (String name : f.enemies) {
+                raf.writeBytes(String.format("  - %s", name));
+            }            
+            
             
             HashSet<ZapEntry>[]             zez;
             String                          f_from;
@@ -559,6 +594,13 @@ public class P extends JavaPlugin {
             else
                 enabledScanner = true;
             
+            noOverClaim = new HashSet<String>();
+            if (cfg.contains("noOverClaim")) {
+                 for (String worldName : cfg.getStringList("noOverClaim")) {
+                     noOverClaim.add(worldName);
+                 }
+            }
+            
             if (cfg.contains("scannerChance")) 
                 scannerChance = cfg.getDouble("scannerChance");
             else
@@ -592,6 +634,16 @@ public class P extends JavaPlugin {
                 worldsEnabled.add(wes);
             }
             
+            cfg.set("noOverClaim", noOverClaim);
+            
+            ArrayList<String>       tmp;
+            
+            tmp = new ArrayList<String>();
+            for (String worldName : noOverClaim) {
+                tmp.add(worldName);
+            }
+            
+            cfg.set("noOverClaim", tmp);
             cfg.set("friendlyFire", friendlyFire);
             cfg.set("scannerChance", scannerChance);
             cfg.set("landPowerCostPerHour", landPowerCostPerHour);
@@ -729,7 +781,6 @@ public class P extends JavaPlugin {
         
         // EVERYTHING WENT OKAY WE PREP THE DISK COMMIT THREAD WHICH WILL RUN LATER ON
         //getServer().getScheduler().scheduleAsyncDelayedTask(this, new DataDumper(this), 20 * 60 * 10);
-        
         this.getServer().getPluginManager().registerEvents(new BlockHook(this), this);
         this.getServer().getPluginManager().registerEvents(new EntityHook(this), this);
         this.getServer().getPluginManager().registerEvents(new PlayerHook(this), this);
@@ -3155,6 +3206,11 @@ public class P extends JavaPlugin {
             if (fchunk != null) {
                 if (fchunk.faction == fp.faction) {
                     player.sendMessage(String.format("§7[f] chunk already owned by your faction %s", fchunk.faction.name));
+                    return true;
+                }
+                
+                if (noOverClaim.contains(player.getWorld().getName())) {
+                    player.sendMessage("§7[f] This world does not allow claiming of another faction's land!");
                     return true;
                 }
 

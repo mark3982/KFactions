@@ -26,6 +26,9 @@ public class Faction implements Serializable {
     public double                          power;
     public Map<String, Integer>            friends;
     //
+    public Set<String>                     allies;
+    public Set<String>                     enemies;
+    //
     public HashSet<ZapEntry>               zappersOutgoing;    
     public HashSet<ZapEntry>               zappersIncoming;
     public double                          mrz;         // minimum rank to zap
@@ -43,6 +46,11 @@ public class Faction implements Serializable {
     
     static final long serialVersionUID = 6227009385804260928L;
     
+    /** This constructor is still used when a faction is created using
+     *  the /f create command, and it must still properly initialize fields
+     *  similar to the YAML loading code when loading this data structure
+     *  from disk.
+     */
     Faction() {
         players = new HashMap<String, FactionPlayer>();
         chunks = new HashMap<String, Map<Long, FactionChunk>>();
@@ -61,22 +69,18 @@ public class Faction implements Serializable {
         mri = 700;
         mrc = 600;
         walocs = new HashSet<WorldAnchorLocation>();
+        allies = new HashSet<String>();
+        enemies = new HashSet<String>();
     }
-    
+
+    /** This methods was primarily used when the old data format was used which
+     *  used the Java binary serialization. And, if the plugin was updated to
+     *  contain new fields then these had to be initialized from null, and this
+     *  function was what was used to catch this situation. Now with the YAML
+     *  format and the more hands on loading code this type of stuff can be done
+     *  directly in that YAML load function.
+     * 
+     */
     public void initFromStorage() {
-        // upgrades pre-existing faction objects
-        if (walocs == null) {
-            walocs = new HashSet<WorldAnchorLocation>();
-        }
-        if (zappersIncoming == null) {
-            zappersIncoming = new HashSet<ZapEntry>();
-            zappersOutgoing = new HashSet<ZapEntry>();
-            mrz = 900;
-            mrtp = 900;
-            hx = 0;
-            hy = 0;
-            hz = 0;
-            hw = null;
-        }
     }
 }
