@@ -595,8 +595,8 @@ public class P extends JavaPlugin {
                 enabledScanner = true;
             
             noGriefPerWorld = new HashSet<String>();
-            if (cfg.contains("noOverClaim")) {
-                 for (String worldName : cfg.getStringList("noOverClaim")) {
+            if (cfg.contains("noGriefPerWorld")) {
+                 for (String worldName : cfg.getStringList("noGriefPerWorld")) {
                      noGriefPerWorld.add(worldName);
                  }
             }
@@ -634,8 +634,6 @@ public class P extends JavaPlugin {
                 worldsEnabled.add(wes);
             }
             
-            cfg.set("noOverClaim", noGriefPerWorld);
-            
             ArrayList<String>       tmp;
             
             tmp = new ArrayList<String>();
@@ -643,7 +641,7 @@ public class P extends JavaPlugin {
                 tmp.add(worldName);
             }
             
-            cfg.set("noOverClaim", tmp);
+            cfg.set("noGriefPerWorld", tmp);
             cfg.set("friendlyFire", friendlyFire);
             cfg.set("scannerChance", scannerChance);
             cfg.set("landPowerCostPerHour", landPowerCostPerHour);
