@@ -2,28 +2,9 @@ name: KFactions
 version: 1.0.134
 main: com.kmcguire.KFactions.P
 authors: [Leonard Kevin McGuire Jr]
-softdepend: []
+softdepend: [Herochat]
 commands:
     f:
       description: The interface to the faction plugin.
     resetwa:
       description: Reset world anchor specified with X Y Z
-TestFaction:
-  members:
-    - kmcguire3413
-    - cpzombie
-    - thekraze
-  claims:
-    203_43:
-      urank: 250
-      brank: 500
-      bpblock:
-        3: 900
-        236: 900
-      upblock:
-        3: 900
-    201_54:
-      urank: 250
-      brank: 500
-  power: 892932
-  flags: 14
