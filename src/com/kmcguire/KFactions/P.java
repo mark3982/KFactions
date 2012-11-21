@@ -4,10 +4,14 @@
  */
 package com.kmcguire.KFactions;
 
+import com.dthielke.herochat.ChannelChatEvent;
+import com.dthielke.herochat.MessageFormatSupplier;
+import com.dthielke.herochat.StandardChannel;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -16,6 +20,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.block.Block;
@@ -28,7 +33,11 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.craftbukkit.util.LongHash;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.event.Event;
+import org.bukkit.event.EventException;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
@@ -37,7 +46,7 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
-import org.bukkit.inventory.ItemStack;
+import org.bukkit.plugin.EventExecutor;
 import org.bukkit.plugin.java.JavaPlugin;
 
 class DataDumper implements Runnable {
@@ -62,7 +71,7 @@ class DataDumper implements Runnable {
     }
 }
 
-public class P extends JavaPlugin {
+public class P extends JavaPlugin implements Listener {
     public Map<String, Faction>                 factions;
     private boolean                             saveToDisk;
     public static final File                    fdata;
@@ -566,6 +575,96 @@ public class P extends JavaPlugin {
         return emcMap.get(LongHash.toLong(tid, did));
     }
     
+    public void setupForHeroChat() {
+        class ProxyExecutor implements EventExecutor {
+            public P            p;
+            
+            @Override
+            public void execute(Listener ll, Event __event) throws EventException {
+                StandardChannel     stdc;
+                String              format;
+                Class               clazz;
+                Field               field;
+                ChannelChatEvent    event;
+
+                class Proxy implements MessageFormatSupplier {
+                  MessageFormatSupplier         mfs;
+                  P                             p;
+                  Player                        player;
+
+                  public Proxy(MessageFormatSupplier _mfs, P _p, Player _player) {
+                      mfs = _mfs;
+                      p = _p;
+                      player = _player;
+                  }
+                  
+                  @Override
+                  public String getStandardFormat() {
+                      String            fmt;
+                      FactionPlayer     fp;
+                      
+                      fmt = mfs.getStandardFormat();
+                      
+                      p.getLogger().info(fmt);
+                      
+                      fp = p.getFactionPlayer(player.getName());
+                      
+                      if (fp != null) {
+                        fmt = fmt.replace("{faction}", fp.faction.name);
+                      } else {
+                        fmt = fmt.replace("{faction}", "");
+                      }
+                      
+                      return fmt;
+                  }
+                  @Override
+                  public String getConversationFormat() {
+                      return mfs.getConversationFormat();
+                  }
+                  @Override
+                  public String getAnnounceFormat() {
+                      return mfs.getAnnounceFormat();
+                  }
+                  @Override
+                  public String getEmoteFormat() {
+                      return mfs.getEmoteFormat();
+                  }
+                }
+                
+                event = (ChannelChatEvent)__event;
+
+                Proxy g;
+
+                stdc = (StandardChannel)event.getChannel();
+
+                clazz = stdc.getClass();
+
+                format = stdc.getFormat();
+
+                getLogger().info(String.format("clazz:%s format:%s", stdc.getClass().getName(), format));
+
+                try {
+                    field = clazz.getDeclaredField("formatSupplier");
+                    field.setAccessible(true);
+                    g = new Proxy((MessageFormatSupplier)field.get(stdc), p, event.getSender().getPlayer());
+                    field.set(stdc, g);
+                } catch (NoSuchFieldException ex) {
+                    ex.printStackTrace();
+                } catch (IllegalAccessException ex) {
+                    ex.printStackTrace();
+                }
+                //stdc.setFormat(null);
+            }
+        }
+        
+        ProxyExecutor           pe;
+        
+        pe = new ProxyExecutor();
+        pe.p = this;
+        
+        Bukkit.getPluginManager().registerEvent(ChannelChatEvent.class, this, EventPriority.LOW, pe, this);
+    }
+    
     @Override
     public void onEnable() {
         File                            file;
@@ -576,9 +675,16 @@ public class P extends JavaPlugin {
         FileConfiguration               cfg;
         File                            fcfg;
         List<String>                    we;
-        
+            
         seeChunkLast = new HashMap<String, Long>();
         scannerWait = new HashMap<String, Long>();
+        
+        try {
+            Class.forName("com.dthielke.herochat.MessageFormatSupplier");
+            setupForHeroChat();
+        } catch (ClassNotFoundException ex) {
+            getLogger().info("The plugin HeroChat was not detected. Report if this is an error!");
+        }
         
         fcfg = new File("kfactions.config.yml");
         
@@ -782,6 +888,8 @@ public class P extends JavaPlugin {
         this.getServer().getPluginManager().registerEvents(new BlockHook(this), this);
         this.getServer().getPluginManager().registerEvents(new EntityHook(this), this);
         this.getServer().getPluginManager().registerEvents(new PlayerHook(this), this);
+        
+        this.getServer().getPluginManager().registerEvents(this, this);
         
         // let faction objects initialize anything <new> .. LOL like new fields
         Iterator<Entry<String, Faction>>            fe;
