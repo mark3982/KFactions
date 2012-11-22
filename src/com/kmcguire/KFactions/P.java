@@ -348,6 +348,10 @@ public class P extends JavaPlugin implements Listener {
         return allfactions;
     }
     
+    /** This is mainly used to make faction name safe to use in other stuff
+     *  such as the YAML data format.
+     *
+     */
     public String sanitizeString(String in) {
         char[]                          cb;
         String                          ac;
@@ -575,6 +579,15 @@ public class P extends JavaPlugin implements Listener {
         return emcMap.get(LongHash.toLong(tid, did));
     }
     
+    /** This will hook the Herochat plugin and stand between it so that it can
+     *  replace the token {faction} in any of the format strings used. This allows
+     *  you to go inside the Herochat config file and insert {faction} where you
+     *  would like for the faction name to appear at thus providing a faction tag.
+     * 
+     *  I mainly use a single reflection hack to access a private field, then I
+     *  use an super class to do the work between the original class and the calling
+     *  Herochat plugin method.
+     */
     public void setupForHeroChat() {
         class ProxyExecutor implements EventExecutor {
             public P            p;
@@ -586,7 +599,7 @@ public class P extends JavaPlugin implements Listener {
                 Class               clazz;
                 Field               field;
                 ChannelChatEvent    event;
-
+                
                 class Proxy implements MessageFormatSupplier {
                   MessageFormatSupplier         mfs;
                   P                             p;
@@ -679,6 +692,14 @@ public class P extends JavaPlugin implements Listener {
         seeChunkLast = new HashMap<String, Long>();
         scannerWait = new HashMap<String, Long>();
         
+        /*
+         * This was done for a guy who wanted to be able to include something such
+         * as {faction} in the Herochat plugin and have it replaced with the player's
+         * faction. To facililate this I had to do a lot of dirty trickery. The good
+         * news is that all that ugly stuff is contained in a single method called
+         * 'setupForHeroChat'. The code below simply detects if Herochat has been
+         * loaded.
+         */
         try {
             Class.forName("com.dthielke.herochat.MessageFormatSupplier");
             setupForHeroChat();
@@ -1689,6 +1710,7 @@ public class P extends JavaPlugin implements Listener {
                 player.sendMessage("§dinvite§r <player> - invite to faction");
                 player.sendMessage("§dcreate§r <name> - make new faction");
                 player.sendMessage("§dseechunk§r <name> - walls the chunk in glass");
+                player.sendMessage("§arename§r <name> - rename faction");
                 player.sendMessage("§7-------------------------------------");
                 return;
             }
@@ -3273,6 +3295,46 @@ public class P extends JavaPlugin implements Listener {
             fp.faction.friends.remove(friendName);
             sendFactionMessage(fp.faction, String.format("§7[f] Removed friend %s\n", friendName));
             return true;            
+        }
+        
+        if (cmd.equals("rename")) {
+            FactionPlayer               fp;
+            String                      newName;
+            
+            fp = getFactionPlayer(player.getName());
+            
+            if (fp == null) {
+                player.sendMessage("§7[f] You are not in a faction.");
+                return true;
+            }
+            
+            if (fp.rank < 1000) {
+                player.sendMessage("§7[f] You need to be owner of this faction to change the rank!");
+                return true;
+            }
+            
+            if (args.length < 2) {
+                player.sendMessage("§7[f] The syntax is /f rename <newname>.");
+                return true;                
+            }
+            
+            newName = args[1];
+            
+            newName = sanitizeString(newName);
+            
+            if (newName.length() < 1) {
+                player.sendMessage("§7[f] The name length is zero!");
+                return true;
+            }
+            
+            getServer().broadcastMessage(String.format("§7[f] The faction §a%s§7 was renamed to §a%s§7.", fp.faction.name, newName));
+            
+            synchronized (factions) {
+                factions.remove(fp.faction.name.toLowerCase());
+                fp.faction.name = newName;
+                factions.put(fp.faction.name.toLowerCase(), fp.faction);
+            }
+            return true;
         }
         
         if (cmd.equals("claim")) {
