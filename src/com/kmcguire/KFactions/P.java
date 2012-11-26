@@ -3492,7 +3492,7 @@ public class P extends JavaPlugin implements Listener {
                 return true;
             }
             
-            fp.faction.chunks.remove(getChunkLong(player.getWorld(), x, z));
+            fp.faction.chunks.get(player.getWorld().getName()).remove(LongHash.toLong(x, z));
             
             // UPDATE FACTION POWER
             getFactionPower(fp.faction);
