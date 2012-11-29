@@ -1,7 +1,3 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 package com.kmcguire.KFactions;
 
 import com.dthielke.herochat.ChannelChatEvent;
@@ -49,6 +45,24 @@ import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.plugin.EventExecutor;
 import org.bukkit.plugin.java.JavaPlugin;
 
+/** This is used to represent the command. Its usage is forced by Bukkit in order
+ *  to call the method which handles command execution. At the time of writting
+ *  this I only use it with the auto-claim feature so I can callback and have
+ *  the code for /f claim executed instead having to implement that directly
+ *  in the auto-claimer and thus duplicate code.
+ * 
+ */
+class __LocalCommandObject extends Command {
+    public __LocalCommandObject(String cmd) {
+        super(cmd);
+    }
+
+    @Override
+    public boolean execute(CommandSender paramCommandSender, String paramString, String[] paramArrayOfString) {
+        return false;
+    }
+}
+
 class DataDumper implements Runnable {
     P           p;
     DataDumper(P p) {
@@ -79,6 +93,8 @@ public class P extends JavaPlugin implements Listener {
     private static HashMap<String, Long>        seeChunkLast;
     private HashMap<String, Long>               scannerWait;
     private HashMap<String, FactionPlayer>      fpquickmap;
+
+    private HashSet<String>                     autoClaim;
     
     static final int    NOPVP =        0x01;
     static final int    NOBOOM =       0x02;
@@ -691,6 +707,7 @@ public class P extends JavaPlugin implements Listener {
             
         seeChunkLast = new HashMap<String, Long>();
         scannerWait = new HashMap<String, Long>();
+        autoClaim = new HashSet<String>();
         
         /*
          * This was done for a guy who wanted to be able to include something such
@@ -910,7 +927,7 @@ public class P extends JavaPlugin implements Listener {
         this.getServer().getPluginManager().registerEvents(new EntityHook(this), this);
         this.getServer().getPluginManager().registerEvents(new PlayerHook(this), this);
         
-        this.getServer().getPluginManager().registerEvents(this, this);
+        //this.getServer().getPluginManager().registerEvents(this, this);
         
         // let faction objects initialize anything <new> .. LOL like new fields
         Iterator<Entry<String, Faction>>            fe;
@@ -1459,7 +1476,7 @@ public class P extends JavaPlugin implements Listener {
         Faction         fc, tc;
         FactionChunk    _fc, _tc;
         World           world;
-        Player          player;
+        final Player    player;
         
         fx = event.getFrom().getBlockX() >> 4;
         fz = event.getFrom().getBlockZ() >> 4;
@@ -1485,6 +1502,22 @@ public class P extends JavaPlugin implements Listener {
             if (fc == tc) {
                 return;
             }
+            
+            if (autoClaim.contains(player.getName()) && (tc == null)) {
+                player.sendMessage("§7[f] Use §a/f autoclaim§r to turn §aOFF§r:");
+                
+                getServer().getScheduler().runTask(this, new Runnable() {
+                    @Override
+                    public void run() {
+                        String[]        args;
+                        
+                        args = new String[1];
+                        args[0] = "claim";
+                        onCommand(player, new __LocalCommandObject("f"), null, args);
+                    }
+                });
+            }
+            
             // HANDLES walking from one faction chunk to another or walking from wilderness (fc can be null or not)
             if (tc != null) {
                 player.sendMessage(String.format("§7[f] You entered faction %s.", tc.name));
@@ -1494,7 +1527,7 @@ public class P extends JavaPlugin implements Listener {
             if (fc != null) {
                 player.sendMessage("§7[f] You entered wilderness.");
                 return;
-            }
+            }            
         }
         
     }
@@ -1711,6 +1744,7 @@ public class P extends JavaPlugin implements Listener {
                 player.sendMessage("§dcreate§r <name> - make new faction");
                 player.sendMessage("§dseechunk§r <name> - walls the chunk in glass");
                 player.sendMessage("§arename§r <name> - rename faction");
+                player.sendMessage("§aautoclaim§r - claims land as you walk");
                 player.sendMessage("§7-------------------------------------");
                 return;
             }
@@ -3457,6 +3491,31 @@ public class P extends JavaPlugin implements Listener {
             
             fp.rank = nrank;
             player.sendMessage(String.format("§7[f] rank for %s is now %d", args[1], nrank));
+            return true;
+        }
+        
+        if (cmd.equals("autoclaim")) {
+            FactionChunk            fc;
+            int                     bx, bz;
+            
+            bx = player.getLocation().getBlockX();
+            bz = player.getLocation().getBlockZ();
+            
+            fc = getFactionChunk(player.getWorld(), bx >> 4, bz >> 4);
+            
+            if (fc == null) {
+                args = new String[1];
+                args[0] = "claim";
+                onCommand(player, new __LocalCommandObject("f"), null, args);
+            }
+            
+            if (autoClaim.contains(player.getName())) {
+                autoClaim.remove(player.getName());
+                player.sendMessage(String.format("§7[f] Auto-claim has been turned §aOFF§r."));
+            } else {
+                autoClaim.add(player.getName());
+                player.sendMessage(String.format("§7[f] Auto-claim has been turned §aON§r."));
+            }
             return true;
         }
         
