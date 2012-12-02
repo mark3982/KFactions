@@ -110,6 +110,8 @@ public class P extends JavaPlugin implements Listener {
     double                  scannerChance;
     boolean                 friendlyFire;
     HashSet<String>         noGriefPerWorld;
+    double                  powerUsedToProtectBlock;
+    boolean                 randomModifierOnProtectBlock;
     
     public Location     gspawn = null;
     
@@ -726,12 +728,24 @@ public class P extends JavaPlugin implements Listener {
         
         fcfg = new File("kfactions.config.yml");
         
+        /*
+         * This section loads the configuration from the disk into memory, then
+         * it immediantly saves it back to disk to populate any missing options
+         * with their default values. This erases any comments in the file but
+         * this was the best option to get the desired results when I wrote this.
+         */
+        
         cfg = new YamlConfiguration();
         
         try {
             if (fcfg.exists()) {
                 cfg.load(fcfg);
             }
+            
+            if (cfg.contains("randomModifierOnProtectBlock"))
+                randomModifierOnProtectBlock = cfg.getBoolean("randomModifierOnProtectBlock");
+            else
+                randomModifierOnProtectBlock = true;
                 
             if (cfg.contains("enabledScanner"))
                 enabledScanner = cfg.getBoolean("enabledScanner");
@@ -744,6 +758,11 @@ public class P extends JavaPlugin implements Listener {
                      noGriefPerWorld.add(worldName);
                  }
             }
+            
+            if (cfg.contains("powerUsedToProtectBlock"))
+                powerUsedToProtectBlock = cfg.getDouble("powerUsedToProtectBlock");
+            else
+                powerUsedToProtectBlock = 7.485380116959064;
             
             if (cfg.contains("scannerChance")) 
                 scannerChance = cfg.getDouble("scannerChance");
@@ -792,6 +811,8 @@ public class P extends JavaPlugin implements Listener {
             cfg.set("worldsEnabled", we);
             cfg.set("enabledScanner", enabledScanner);
             cfg.set("scannerWaitTime", scannerWaitTime);
+            cfg.set("powerUsedToProtectBlock", powerUsedToProtectBlock);
+            cfg.set("randomModifierOnProtectBlock", randomModifierOnProtectBlock);
             
             cfg.save(fcfg);
         } catch (InvalidConfigurationException ex) {
@@ -1372,8 +1393,10 @@ public class P extends JavaPlugin implements Listener {
                         continue;
                     }
                     // check if faction can pay for protection
-                    // 8192 / 24 is cost per block (equal one hour faction power)
-                    pcost = Math.random() * (8192.0 / 24.0 / 2.0 / 5.7 / 4.0);
+                    if (randomModifierOnProtectBlock)
+                        pcost = Math.random() * powerUsedToProtectBlock;
+                    else
+                        pcost = powerUsedToProtectBlock;
                     if (getFactionPower(fchunk.faction) >= pcost) {
                         fchunk.faction.power -= pcost;
                         iter.remove();
