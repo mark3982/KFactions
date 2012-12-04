@@ -398,14 +398,25 @@ public class P extends JavaPlugin implements Listener {
         return new String(cb, 0, z);
     }
     
+    /** This is a comfort function used to automatically specify the correct
+     *  variables during the call.
+     * 
+     */
     public void DumpHumanReadableData() throws FileNotFoundException, IOException {
         _DumpHumanReadableData(factions, fdata);
     }
     
+    /** This is a comfort function used to specify to actual output file.
+     * 
+     */
     public void DumpHumanReadableData(File file) throws FileNotFoundException, IOException {
         _DumpHumanReadableData(factions, file);
     }
     
+    /** This is used by _DumpHumanReadableData to dump the data about a chunk
+     *  into a file using the YAML format. This is a utility function.
+     *  
+     */
     private void hrfWriteChunk(RandomAccessFile raf, FactionChunk chk) throws IOException {
         // mru (done)
         // mrb (done)
@@ -428,6 +439,14 @@ public class P extends JavaPlugin implements Listener {
         }
     }
     
+    /** This will save all persistent data to disk into a file specified in the
+     *  YAML format.
+     * 
+     * @param allfactions               This is the faction's main data structure.
+     * @param file                      The file to save the data in the YAML format into.
+     * @throws FileNotFoundException    
+     * @throws IOException 
+     */
     public void _DumpHumanReadableData(Map<String, Faction> allfactions, File file) throws FileNotFoundException, IOException {
         RandomAccessFile                raf;
         Faction                         f;
@@ -594,13 +613,22 @@ public class P extends JavaPlugin implements Listener {
         return;
     }
     
+    /**
+     * This will return the amount of EMC an item/block is worth.
+     * 
+     * @param tid               The TypeID of the item/block.
+     * @param did               The DataID of the item/block or ZERO.
+     * @return                  The amount of EMC the item/block is worth.
+     */
     public int getEMC(int tid, int did) {
         if (!emcMap.containsKey(LongHash.toLong(tid, did)))
             return 0;
         return emcMap.get(LongHash.toLong(tid, did));
     }
     
-    /** This will hook the Herochat plugin and stand between it so that it can
+    /** 
+     *  ===UGLY HACK WARNING===
+     *  This will hook the Herochat plugin and stand between it so that it can
      *  replace the token {faction} in any of the format strings used. This allows
      *  you to go inside the Herochat config file and insert {faction} where you
      *  would like for the faction name to appear at thus providing a faction tag.
@@ -1024,6 +1052,11 @@ public class P extends JavaPlugin implements Listener {
         // make job to go through and calculate zappers for factions
     }
     
+    /**
+     * This runs on interval and calculates any zaps on the faction's power.
+     * 
+     * @param f                 The faction to calculate zaps on.
+     */
     public void calcZappers(Faction f) {
         long        ct, tdelta;
         double      toTake;
@@ -1082,6 +1115,11 @@ public class P extends JavaPlugin implements Listener {
         }
     }
     
+    /**
+     * This will return the faction object for the specified case-insensitive name.
+     * @param factionName               A case-insensitive name.
+     * @return                          The faction object.
+     */
     public Faction getFactionByName(String factionName) {
         for (Faction f : factions.values()) {
             if (f.name.toLowerCase().equals(factionName.toLowerCase())) {
@@ -1091,6 +1129,11 @@ public class P extends JavaPlugin implements Listener {
         return null;
     }
     
+    /**
+     * This will send a message to all online members of the faction.
+     * @param f                     The faction object for the target faction.
+     * @param m                     The raw chat message to send.
+     */
     public void sendFactionMessage(Faction f, String m) {
         Iterator<Entry<String, FactionPlayer>>      i;
         Player                                      p;
