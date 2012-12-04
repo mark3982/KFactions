@@ -112,6 +112,9 @@ public class P extends JavaPlugin implements Listener {
     HashSet<String>         noGriefPerWorld;
     double                  powerUsedToProtectBlock;
     boolean                 randomModifierOnProtectBlock;
+    //
+    double                  powerUsedEachClaim;
+    int                     numberOfFreeClaims;
     
     public Location     gspawn = null;
     
@@ -741,6 +744,16 @@ public class P extends JavaPlugin implements Listener {
             if (fcfg.exists()) {
                 cfg.load(fcfg);
             }
+    
+            if (cfg.contains("powerUsedEachClaim"))
+                powerUsedEachClaim = cfg.getDouble("powerUsedEachClaim");
+            else
+                powerUsedEachClaim = 0;
+    
+            if (cfg.contains("numberOfFreeClaims"))
+                numberOfFreeClaims = cfg.getInt("numberOfFreeClaims");
+            else
+                numberOfFreeClaims = 2;
             
             if (cfg.contains("randomModifierOnProtectBlock"))
                 randomModifierOnProtectBlock = cfg.getBoolean("randomModifierOnProtectBlock");
@@ -803,7 +816,9 @@ public class P extends JavaPlugin implements Listener {
             for (String worldName : noGriefPerWorld) {
                 tmp.add(worldName);
             }
-            
+    
+            cfg.set("powerUsedEachClaim", powerUsedEachClaim);
+            cfg.set("numberOfFreeClaims", numberOfFreeClaims);
             cfg.set("noGriefPerWorld", tmp);
             cfg.set("friendlyFire", friendlyFire);
             cfg.set("scannerChance", scannerChance);
@@ -3396,7 +3411,7 @@ public class P extends JavaPlugin implements Listener {
         
         if (cmd.equals("claim")) {
             FactionPlayer               fp;
-            int                         x, z;
+            int                         x, z, c;
             FactionChunk                fchunk;
             double                      pow;
             
@@ -3418,15 +3433,23 @@ public class P extends JavaPlugin implements Listener {
                 return true;
             }
             
-            // DO WE HAVE ENOUGH POWER? 
-            // NEED ENOUGH TO HOLD FOR 24 HOURS
-            //pow = getFactionPower(fp.faction);
-            //if (pow < ((fp.faction.chunks.size() + 1) * 24.0)) {
-            //    player.sendMessage("§7[f] The faction lacks needed power to claim land");
-            //    return true;
-            //}
+            // count the number of claims they current have
+            c = 0;
+            for (Map m : fp.faction.chunks.values()) {
+                c += m.size();
+            }
             
-            //smsg(String.format("blockx:%d", player.getLocation().getBlockX()));
+            // have they exceeded the free claims count?
+            if (c >= numberOfFreeClaims) {
+                pow = getFactionPower(fp.faction);
+                if (pow < powerUsedEachClaim) {
+                    player.sendMessage(String.format("§[f] You have exceeded number of free claims. You need %d power to claim this land.", powerUsedEachClaim));
+                    return true;
+                }
+                synchronized(fp.faction) {
+                    fp.faction.power -= powerUsedEachClaim;
+                }
+            }
             
             x = player.getLocation().getBlockX();
             z = player.getLocation().getBlockZ();
