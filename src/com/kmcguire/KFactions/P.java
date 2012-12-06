@@ -16,6 +16,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.UUID;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
@@ -29,6 +30,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.craftbukkit.util.LongHash;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventException;
@@ -37,6 +39,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -113,6 +116,8 @@ public class P extends JavaPlugin implements Listener {
     HashSet<String>         noGriefPerWorld;
     double                  powerUsedToProtectBlock;
     boolean                 randomModifierOnProtectBlock;
+    double                  percentageofPowerOnTeleport;
+    boolean                 repawnAtFactionHome;
     //
     double                  powerUsedEachClaim;
     int                     numberOfFreeClaims;
@@ -773,6 +778,16 @@ public class P extends JavaPlugin implements Listener {
             if (fcfg.exists()) {
                 cfg.load(fcfg);
             }
+            
+            if (cfg.contains("repawnAtFactionHome"))
+                repawnAtFactionHome = cfg.getBoolean("repawnAtFactionHome");
+            else
+                repawnAtFactionHome = false;
+            
+            if (cfg.contains("percentageofPowerOnTeleport"))
+                percentageofPowerOnTeleport = cfg.getDouble("percentageofPowerOnTeleport");
+            else
+                percentageofPowerOnTeleport = 0.1;
     
             if (cfg.contains("powerUsedEachClaim"))
                 powerUsedEachClaim = cfg.getDouble("powerUsedEachClaim");
@@ -846,6 +861,8 @@ public class P extends JavaPlugin implements Listener {
                 tmp.add(worldName);
             }
     
+            cfg.set("repawnAtFactionHome", repawnAtFactionHome);
+            cfg.set("percentageofPowerOnTeleport", percentageofPowerOnTeleport);
             cfg.set("powerUsedEachClaim", powerUsedEachClaim);
             cfg.set("numberOfFreeClaims", numberOfFreeClaims);
             cfg.set("noGriefPerWorld", tmp);
@@ -1570,8 +1587,26 @@ public class P extends JavaPlugin implements Listener {
     
     @EventHandler
     public void handlePlayerRespawnEvent(PlayerRespawnEvent event) {
-        if (gspawn == null)
+        if (repawnAtFactionHome) {
+            FactionPlayer           fp;
+            
+            fp = getFactionPlayer(event.getPlayer().getName());
+            if (fp != null) {
+                if (fp.faction.hw != null) {
+                    event.setRespawnLocation(new Location(
+                            getServer().getWorld(fp.faction.hw),
+                            fp.faction.hx,
+                            fp.faction.hy,
+                            fp.faction.hz
+                    ));
+                    return;
+                }
+            }
+        }
+        
+        if (gspawn == null) {
             return;
+        }
         event.setRespawnLocation(gspawn);
     }
     
@@ -1837,8 +1872,8 @@ public class P extends JavaPlugin implements Listener {
             
             if (args[1].equalsIgnoreCase("basic")) {
                 player.sendMessage("§7--------------BASIC------------------");
-                player.sendMessage("§dcharge§r - charge faction power from item");
-                player.sendMessage("§achkcharge§r - check how much charge from item");
+                player.sendMessage("§ddocharge§r - charge faction power from item");
+                player.sendMessage("§acharge§r - check how much charge from item");
                 player.sendMessage("§aunclaimall§r - unclaim all land");
                 player.sendMessage("§aunclaim§r - unclaim land claimed");
                 player.sendMessage("§dclaim§r - claim land standing on");
@@ -2567,9 +2602,10 @@ public class P extends JavaPlugin implements Listener {
             }
             teleportPlayer(getServer().getPlayer(args[1]), loc);
             synchronized (fp.faction) {
-                fp.faction.power = fp.faction.power - (fp.faction.power * 0.1);
+                fp.faction.power = fp.faction.power - (fp.faction.power * percentageofPowerOnTeleport);
             }
             return true;
+            
         }
         if (cmd.equals("setmrsh")) {
             FactionPlayer           fp;
@@ -3568,7 +3604,7 @@ public class P extends JavaPlugin implements Listener {
             FactionPlayer           mp;
             int                     nrank;
             
-            if (args.length < 2) {
+            if (args.length < 3) {
                 player.sendMessage("§7[f] Not enough arguments /f rank <player> <rank>");
                 return true;
             }
@@ -3696,7 +3732,7 @@ public class P extends JavaPlugin implements Listener {
             return true;
         }
         
-        if (cmd.equals("chkcharge")) {
+        if (cmd.equals("charge")) {
             int                         icnt;
             int                         mid;
             byte                        dat;
@@ -3708,14 +3744,11 @@ public class P extends JavaPlugin implements Listener {
             
             pts = (double)getEMC(mid, dat);
             
-            player.sendMessage(String.format("§7[f] %f/item total:%f", pts, pts * icnt));
-            
-            
-            
+            player.sendMessage(String.format("§7[f] §a%f§r/item total:§a%f§r to actually charge type §b/f docharge§r!", pts, pts * icnt));
             return true;
         } 
         
-        if (cmd.equals("charge")) {
+        if (cmd.equals("docharge")) {
             FactionPlayer               fp;
             int                         icnt;
             double                      pts;
