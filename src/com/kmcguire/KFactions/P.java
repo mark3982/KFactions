@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import org.bukkit.Bukkit;
+import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.block.Block;
@@ -1050,6 +1051,30 @@ public class P extends JavaPlugin implements Listener {
         }
         , 20 * 10 * 60, 20 * 10 * 60); // every 10 minutes seems decent
         // make job to go through and calculate zappers for factions
+    }
+    
+    public void teleportPlayer(Player p, Location l) {
+        Chunk           chunk;
+        Location        nl;
+        int             x, z, y;
+        Block           block;
+        
+        chunk = l.getWorld().getChunkAt(l);
+        
+        x = l.getBlockX() & 0xf;
+        z = l.getBlockZ() & 0xf;
+        y = l.getBlockY();
+        
+        for (y = l.getBlockY(); y > -1; --y) {
+            block = chunk.getBlock(x, y, z);
+            if (!block.isEmpty()) {
+                nl = new Location(l.getWorld(), l.getBlockX(), y, l.getBlockZ());
+                p.sendBlockChange(nl, block.getTypeId(), block.getData());
+                break;
+            }
+        }
+        
+        p.teleport(l);
     }
     
     /**
@@ -2540,8 +2565,7 @@ public class P extends JavaPlugin implements Listener {
                 }
                 loc = new Location(getServer().getWorld(fp.faction.hw), fp.faction.hx, fp.faction.hy + 0.3, fp.faction.hz);                
             }
-            
-            getServer().getPlayer(args[1]).teleport(loc);
+            teleportPlayer(getServer().getPlayer(args[1]), loc);
             synchronized (fp.faction) {
                 fp.faction.power = fp.faction.power - (fp.faction.power * 0.1);
             }
