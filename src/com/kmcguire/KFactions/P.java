@@ -14,6 +14,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.UUID;
@@ -523,9 +524,9 @@ public class P extends JavaPlugin implements Listener {
             raf.writeBytes(String.format(" flags: %d\n", f.flags));
             // hw, hx, hy, hz
             raf.writeBytes(String.format(" hw: %s\n", f.hw));
-            raf.writeBytes(String.format(" hx: %f\n", f.hx));
-            raf.writeBytes(String.format(" hy: %f\n", f.hy));
-            raf.writeBytes(String.format(" hz: %f\n", f.hz));
+            raf.writeBytes(String.format(Locale.US, " hx: %f\n", f.hx));
+            raf.writeBytes(String.format(Locale.US, " hy: %f\n", f.hy));
+            raf.writeBytes(String.format(Locale.US, " hz: %f\n", f.hz));
             // invitations
             raf.writeBytes(String.format(" invites:\n"));
             if (f.invites != null) {
@@ -551,7 +552,7 @@ public class P extends JavaPlugin implements Listener {
             raf.writeBytes(String.format(" mrz: %d\n", (int)f.mrz));
             // name (already used for root key name)
             // power
-            raf.writeBytes(String.format(" power: %f\n", f.power));
+            raf.writeBytes(String.format(Locale.US, " power: %f\n", f.power));
             
             raf.writeBytes(" walocs:\n");
             j = 0;
@@ -598,13 +599,13 @@ public class P extends JavaPlugin implements Listener {
                 for (ZapEntry ze : f.zappersIncoming) {
                     raf.writeBytes(String.format("  %d:\n", j++));
                     // amount double
-                    raf.writeBytes(String.format("   amount: %f\n", ze.amount));
+                    raf.writeBytes(String.format(Locale.US, "   amount: %f\n", ze.amount));
                     // from
                     raf.writeBytes(String.format("   from: %s\n", ze.from.name));
                     // isFake boolean
                     raf.writeBytes(String.format("   isFake: %b\n", ze.isFake));
                     // perTick boolean
-                    raf.writeBytes(String.format("   perTick: %f\n", ze.perTick));
+                    raf.writeBytes(String.format(Locale.US, "   perTick: %f\n", ze.perTick));
                     // timeStart long 
                     raf.writeBytes(String.format("   timeStart: %d\n", ze.timeStart));
                     // timeTick long
@@ -615,7 +616,7 @@ public class P extends JavaPlugin implements Listener {
             }
             // <end of loop>
         }
-        
+        raf.close();
         return;
     }
     
