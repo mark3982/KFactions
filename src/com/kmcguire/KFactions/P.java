@@ -1236,10 +1236,6 @@ public class P extends JavaPlugin implements Listener {
         
         player = event.getPlayer();
         
-        if (player.hasPermission(bypassPermission)) {
-            return;
-        }
-        
         //x = player.getLocation().getBlockX() >> 4;
         //z = player.getLocation().getBlockZ() >> 4;
         w = player.getWorld();
@@ -1342,10 +1338,6 @@ public class P extends JavaPlugin implements Listener {
         
         player = event.getPlayer();
         
-        if (player.hasPermission(bypassPermission)) {
-            return;
-        }
-        
         block = event.getBlockPlaced();
         
         x = event.getBlock().getX() >> 4;
@@ -1421,10 +1413,6 @@ public class P extends JavaPlugin implements Listener {
             return;
         
         player = event.getPlayer();
-        
-        if (player.hasPermission(bypassPermission)) {
-            return;
-        }
         
         block = event.getBlock();
         x = event.getBlock().getX() >> 4;
@@ -2042,16 +2030,31 @@ public class P extends JavaPlugin implements Listener {
             }
         }        
     } 
+    
+    private void msg(Player p, String msg) {
+        if (p == null) {
+            getLogger().info(msg);
+            return;
+        }
+        
+        p.sendMessage(msg);
+    }
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         String              cmd;
-        final Player        player;
+        Player              player;
+        
+        player = null;
         
         // MUST BE TYPED INTO THE CONSOLE
-        if (!(sender instanceof Player)) {
+        if (!(sender instanceof Player) || (((Player)sender).hasPermission(bypassPermission))) {
             if (args.length < 1) {
                 return true;
+            }
+            
+            if (sender instanceof Player) {
+                player = (Player)sender;
             }
             
             cmd = args[0];
@@ -2082,7 +2085,7 @@ public class P extends JavaPlugin implements Listener {
 
                 f = getFactionByName(fn);
                 if (f == null) {
-                    getServer().getLogger().info("[f] Could not find faction");
+                    msg(player, "[f] Could not find faction");
                     return true;
                 }
                 
@@ -2093,18 +2096,18 @@ public class P extends JavaPlugin implements Listener {
                         (wal.y == y) && 
                         (wal.z == z) && 
                         (wal.w.equals(w))) {
-                        getServer().getLogger().info("§7[f] World anchor removed from faction control. You may now place one more.");
+                        msg(player, "§7[f] World anchor removed from faction control. You may now place one more.");
                         i.remove();
                         return true;
                     }
                 }
-                getServer().getLogger().info("[f] Could not find world anchor.");
+                msg(player, "[f] Could not find world anchor.");
                 return true;
             }
             
             if (cmd.equals("setgspawn")) {
                 if (args.length < 1) {
-                    getServer().getLogger().info("§7[f] setgspawn needs one argument /f setgspawn <playername>");
+                    msg(player, "§7[f] setgspawn needs one argument /f setgspawn <playername>");
                     return true;
                 }
                 Location            l;
@@ -2112,13 +2115,13 @@ public class P extends JavaPlugin implements Listener {
                 RandomAccessFile    raf;
                 
                 if (getServer().getPlayer(args[1]) == null) {
-                    getServer().getLogger().info("§7[f] player does not exist");
+                    msg(player, "§7[f] player does not exist");
                     return true;
                 }
                 
                 l = getServer().getPlayer(args[1]).getLocation();
                 gspawn = l;
-                getServer().getLogger().info("§7[f] set global respawn to location of player");
+                msg(player, "§7[f] set global respawn to location of player");
                 // ALSO WRITE OUT TO DISK FILE
                 file = new File("plugin.gspawn.factions");
                 try {
@@ -2131,7 +2134,7 @@ public class P extends JavaPlugin implements Listener {
                 } catch (FileNotFoundException e) {
                     return true;
                 } catch (IOException e) {
-                    getServer().getLogger().info("§7[f] could not write gspawn to disk!");
+                    msg(player, "§7[f] could not write gspawn to disk!");
                     return true;
                 }
                 return true;
@@ -2141,24 +2144,24 @@ public class P extends JavaPlugin implements Listener {
                 Faction                 f;
                 
                 if (args.length < 1) {
-                    getServer().getLogger().info("§7[f] noboom needs one argument /f noboom <faction>");
+                    msg(player, "§7[f] noboom needs one argument /f noboom <faction>");
                     return true;
                 }                              
                 
                 f = getFactionByName(args[1]);
                 if (f == null) {
-                    getServer().getLogger().info(String.format("§7[f] faction %s can not be found", args[1]));
+                    msg(player, String.format("§7[f] faction %s can not be found", args[1]));
                     return true;
                 }
                 
                 if ((f.flags & NOBOOM) == NOBOOM) { 
                     f.flags = f.flags & ~NOBOOM;
-                    getServer().getLogger().info(String.format("§7[f] NOBOOM toggled OFF on %s", args[1]));
+                    msg(player, String.format("§7[f] NOBOOM toggled OFF on %s", args[1]));
                     return true;
                 }
                 
                 f.flags = f.flags | NOBOOM;
-                getServer().getLogger().info(String.format("§7[f] NOBOOM toggled ON on %s", args[1]));
+                msg(player, String.format("§7[f] NOBOOM toggled ON on %s", args[1]));
                 return true;
             }
             
@@ -2167,19 +2170,19 @@ public class P extends JavaPlugin implements Listener {
                 Faction                 f;
 
                 if (args.length < 1) {
-                    getServer().getLogger().info("§7[f] nopvp needs one argument /f nopvp <faction>");
+                    msg(player, "§7[f] nopvp needs one argument /f nopvp <faction>");
                     return true;
                 }                              
                 
                 f = getFactionByName(args[1]);
                 if (f == null) {
-                    getServer().getLogger().info(String.format("§7[f] faction %s can not be found", args[1]));
+                    msg(player, String.format("§7[f] faction %s can not be found", args[1]));
                     return true;
                 }
                 
                 if ((f.flags & NOPVP) == NOPVP) { 
                     f.flags = f.flags & ~NOPVP;
-                    getServer().getLogger().info(String.format("§7[f] NOPVP toggled OFF on %s", args[1]));
+                    msg(player, String.format("§7[f] NOPVP toggled OFF on %s", args[1]));
                     return true;
                 }
                 
@@ -2193,24 +2196,24 @@ public class P extends JavaPlugin implements Listener {
                 Faction                 f;
                 
                 if (args.length < 1) {
-                    getServer().getLogger().info("§7[f] nodecay needs one argument /f nodecay <faction>");
+                    msg(player, "§7[f] nodecay needs one argument /f nodecay <faction>");
                     return true;
                 }                
                 
                 f = getFactionByName(args[1]);
                 if (f == null) {
-                    getServer().getLogger().info(String.format("§7[f] faction %s can not be found", args[1]));
+                    msg(player, String.format("§7[f] faction %s can not be found", args[1]));
                     return true;
                 }
                 
                 if ((f.flags & NODECAY) == NODECAY) { 
                     f.flags = f.flags & ~NODECAY;
-                    getServer().getLogger().info(String.format("§7[f] NODECAY toggled OFF on %s", args[1]));
+                    msg(player, String.format("§7[f] NODECAY toggled OFF on %s", args[1]));
                     return true;
                 }
                 
                 f.flags = f.flags | NODECAY;
-                getServer().getLogger().info(String.format("§7[f] NODECAY toggled ON on %s", args[1]));
+                msg(player, String.format("§7[f] NODECAY toggled ON on %s", args[1]));
                 return true;
             }
                         
@@ -2218,25 +2221,25 @@ public class P extends JavaPlugin implements Listener {
                 // f yank <faction> <player>
                 Faction                 f;
                 
-                if (args.length < 2) {
-                    getServer().getLogger().info("§7[f] yank needs two arguments /f yank <faction> <player>");
+                if (args.length < 3) {
+                    msg(player, "§7[f] yank needs two arguments /f yank <faction> <player>");
                     return true;
                 }
                 
                 f = getFactionByName(args[1]);
                 
                 if (f == null) {
-                    getServer().getLogger().info(String.format("§7[f] faction %s can not be found", args[1]));
+                    msg(player, String.format("§7[f] faction %s can not be found", args[1]));
                     return true;
                 }
                 
                 if (!f.players.containsKey(args[2])) {
-                    getServer().getLogger().info(String.format("§7[f] faction %s has no player %s", args[1], args[2]));
+                    msg(player, String.format("§7[f] faction %s has no player %s", args[1], args[2]));
                     return true;
                 }
                 
                 f.players.remove(args[2]);
-                getServer().getLogger().info(String.format("§7[f] player %s was yanked from faction %s", args[2], args[1]));
+                msg(player, String.format("§7[f] player %s was yanked from faction %s", args[2], args[1]));
                 return true;
             }
             
@@ -2245,8 +2248,8 @@ public class P extends JavaPlugin implements Listener {
                 FactionPlayer           fp;
                 Faction                 f;
 
-                if (args.length < 2) {
-                    getServer().getLogger().info("§7[f] stick needs two arguments /stick <faction> <player>");
+                if (args.length < 3) {
+                    msg(player, "§7[f] stick needs two arguments /stick <faction> <player>");
                     return true;
                 }                
                 
@@ -2257,7 +2260,7 @@ public class P extends JavaPlugin implements Listener {
                 
                 f = getFactionByName(args[1]);
                 if (f == null) {
-                    getServer().getLogger().info(String.format("§7[f] faction %s can not be found", args[1]));
+                    msg(player, String.format("§7[f] faction %s can not be found", args[1]));
                     return true;
                 }
                 
@@ -2268,7 +2271,7 @@ public class P extends JavaPlugin implements Listener {
                 
                 f.players.put(args[2], fp);
                 
-                getServer().getLogger().info(String.format("§7[f] player %s was stick-ed in faction %s", args[2], args[1]));
+                msg(player, String.format("§7[f] player %s was stick-ed in faction %s", args[2], args[1]));
                 return true;
             }
         }
@@ -3097,6 +3100,7 @@ public class P extends JavaPlugin implements Listener {
         
         if (cmd.equals("seechunk")) {
             long                ct, dt;
+            final Player        _player;
             
             ct = System.currentTimeMillis();
             
@@ -3112,10 +3116,11 @@ public class P extends JavaPlugin implements Listener {
             
             showPlayerChunk(player, false);
             
+            _player = player;
             getServer().getScheduler().scheduleSyncDelayedTask(this, new Runnable() {
                 @Override
                 public void run() {
-                    showPlayerChunk(player, true);
+                    showPlayerChunk(_player, true);
                 }
             }, 20 * 10);
             
