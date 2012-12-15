@@ -122,6 +122,8 @@ public class P extends JavaPlugin implements Listener {
     //
     double                  powerUsedEachClaim;
     int                     numberOfFreeClaims;
+    //
+    String                  bypassPermission;
     
     public Location     gspawn = null;
     
@@ -138,6 +140,10 @@ public class P extends JavaPlugin implements Listener {
     }
     
     public Map<String, Faction> LoadHumanReadableData() throws InvalidConfigurationException {
+        return LoadHumanReadableData(fdata);
+    }
+    
+    public Map<String, Faction> LoadHumanReadableData(File _fdata) throws InvalidConfigurationException {
         YamlConfiguration                   cfg;
         ConfigurationSection                cfg_root;
         ConfigurationSection                cfg_chunks;
@@ -159,7 +165,7 @@ public class P extends JavaPlugin implements Listener {
         allfactions = new HashMap<String, Faction>();
 
         try {
-            cfg.load(fdata);
+            cfg.load(_fdata);
         } catch (FileNotFoundException ex) {
             return null;
         } catch (IOException ex) {
@@ -780,6 +786,11 @@ public class P extends JavaPlugin implements Listener {
                 cfg.load(fcfg);
             }
             
+            if (cfg.contains("bypassPermission"))
+                bypassPermission = cfg.getString("bypassPermission");
+            else
+                bypassPermission = "kfactions.bypass";
+            
             if (cfg.contains("repawnAtFactionHome"))
                 repawnAtFactionHome = cfg.getBoolean("repawnAtFactionHome");
             else
@@ -862,6 +873,7 @@ public class P extends JavaPlugin implements Listener {
                 tmp.add(worldName);
             }
     
+            cfg.set("bypassPermission", bypassPermission);
             cfg.set("repawnAtFactionHome", repawnAtFactionHome);
             cfg.set("percentageofPowerOnTeleport", percentageofPowerOnTeleport);
             cfg.set("powerUsedEachClaim", powerUsedEachClaim);
@@ -1223,6 +1235,11 @@ public class P extends JavaPlugin implements Listener {
         int             rank;
         
         player = event.getPlayer();
+        
+        if (player.hasPermission(bypassPermission)) {
+            return;
+        }
+        
         //x = player.getLocation().getBlockX() >> 4;
         //z = player.getLocation().getBlockZ() >> 4;
         w = player.getWorld();
@@ -1323,8 +1340,13 @@ public class P extends JavaPlugin implements Listener {
         if (event.isCancelled())
             return;
         
-        block = event.getBlockPlaced();
         player = event.getPlayer();
+        
+        if (player.hasPermission(bypassPermission)) {
+            return;
+        }
+        
+        block = event.getBlockPlaced();
         
         x = event.getBlock().getX() >> 4;
         z = event.getBlock().getZ() >> 4;
@@ -1398,8 +1420,13 @@ public class P extends JavaPlugin implements Listener {
         if (event.isCancelled())
             return;
         
-        block = event.getBlock();
         player = event.getPlayer();
+        
+        if (player.hasPermission(bypassPermission)) {
+            return;
+        }
+        
+        block = event.getBlock();
         x = event.getBlock().getX() >> 4;
         z = event.getBlock().getZ() >> 4;
         w = player.getWorld();
