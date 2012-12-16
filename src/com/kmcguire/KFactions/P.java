@@ -2958,6 +2958,11 @@ public class P extends JavaPlugin implements Listener {
             
             fp = getFactionPlayer(player.getName());
             
+            if (args.length < 2) {
+                player.sendMessage("§7[f] The correct syntax is §/f create <name>§r.");
+                return true;
+            }
+            
             args[1] = sanitizeString(args[1]);
             
             if (fp != null) {
