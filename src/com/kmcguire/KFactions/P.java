@@ -17,7 +17,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.UUID;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
@@ -29,9 +28,8 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.craftbukkit.util.LongHash;
+import org.bukkit.craftbukkit.v1_4_6.util.LongHash;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventException;
@@ -40,7 +38,6 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
-import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -3584,7 +3581,7 @@ public class P extends JavaPlugin implements Listener {
             if (c >= numberOfFreeClaims) {
                 pow = getFactionPower(fp.faction);
                 if (pow < powerUsedEachClaim) {
-                    player.sendMessage(String.format("§[f] You have exceeded number of free claims. You need %d power to claim this land.", powerUsedEachClaim));
+                    player.sendMessage(String.format("§[f] You have exceeded number of free claims. You need %f power to claim this land.", powerUsedEachClaim));
                     return true;
                 }
                 synchronized(fp.faction) {
