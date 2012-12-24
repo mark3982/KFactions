@@ -28,7 +28,6 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.craftbukkit.v1_4_6.util.LongHash;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
@@ -121,6 +120,8 @@ public class P extends JavaPlugin implements Listener {
     int                     numberOfFreeClaims;
     //
     String                  bypassPermission;
+    boolean                 requirePermission;
+    String                  usagePermission;
     
     public Location     gspawn = null;
     
@@ -783,6 +784,16 @@ public class P extends JavaPlugin implements Listener {
                 cfg.load(fcfg);
             }
             
+            if (cfg.contains("usagePermission"))
+                usagePermission = cfg.getString("usagePermission");
+            else
+                usagePermission = "kfactions.usage";
+            
+            if (cfg.contains("requirePermission"))
+                requirePermission = cfg.getBoolean("requirePermission");
+            else
+                requirePermission = false;
+            
             if (cfg.contains("bypassPermission"))
                 bypassPermission = cfg.getString("bypassPermission");
             else
@@ -869,7 +880,8 @@ public class P extends JavaPlugin implements Listener {
             for (String worldName : noGriefPerWorld) {
                 tmp.add(worldName);
             }
-    
+            
+            cfg.set("requirePermission", requirePermission);
             cfg.set("bypassPermission", bypassPermission);
             cfg.set("repawnAtFactionHome", repawnAtFactionHome);
             cfg.set("percentageofPowerOnTeleport", percentageofPowerOnTeleport);
@@ -2277,6 +2289,12 @@ public class P extends JavaPlugin implements Listener {
             return false;
         
         player = (Player)sender;
+        
+        if (requirePermission) {
+            if (!player.hasPermission(usagePermission)) {
+                return true;
+            }
+        }
         
         // enforce world restrictions
         if (!worldsEnabled.contains(player.getWorld().getName())) {

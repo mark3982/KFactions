@@ -1,7 +1,6 @@
 package com.kmcguire.KFactions;
 
 import java.util.HashMap;
-import org.bukkit.craftbukkit.util.LongHash;
 
 public class EMCMap {
     public static final HashMap<Long, Integer>       emcMap;
