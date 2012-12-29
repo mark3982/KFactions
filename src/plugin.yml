@@ -2,7 +2,7 @@ name: KFactions
 version: 1.0.134
 main: com.kmcguire.KFactions.P
 authors: [Leonard Kevin McGuire Jr]
-softdepend: [Herochat]
+softdepend: [Herochat,EssentialsChat]
 commands:
     f:
       description: The interface to the faction plugin.

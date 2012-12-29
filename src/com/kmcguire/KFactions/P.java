@@ -39,6 +39,8 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
+import org.bukkit.event.player.AsyncPlayerChatEvent;
+import org.bukkit.event.player.PlayerChatEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
@@ -95,15 +97,25 @@ public class P extends JavaPlugin implements Listener {
     private HashMap<String, Long>               scannerWait;
     private HashMap<String, FactionPlayer>      fpquickmap;
 
+    // IF A PLAYER NAME IS SPECIFIED IN THIS SET THEN THEY WILL
+    // AUTOMATICALLY TRY TO CLAIM THE LAND IF IT IS UNCLAIMED
+    // THEY MUST HAVE THE PROPER RANK TO CLAIM LAND OR ELSE THEY
+    // WILL REPEATEDLY GET AN ERROR MESSAGE
     private HashSet<String>                     autoClaim;
+    // IF A PLAYER NAME IS SPECIFIED IN THIS SET THEN THEY WILL
+    // BE SENT A FEW LINES OF CHAT DISPLAYING A FACTION MAP EACH
+    // TIME THEY TRANSITION FROM ONE CHUNK TO ANOTHER
+    private HashSet<String>                     mapView;
     
     static final int    NOPVP =        0x01;
     static final int    NOBOOM =       0x02;
     static final int    NODECAY =      0x04;
     
+    // THIS HOLDS THE MAPPING OF AMOUNT OF CHARGE TO SPECIFIC HOLDABLE
+    // ITEMS AND BLOCKS.
     public HashMap<Long, Integer>                emcMap;
     
-    // configuration
+    // THIS ARE ALL GOING TO BE CONFIGURATION VALUES
     public double           landPowerCostPerHour;
     public HashSet<String>  worldsEnabled; 
     boolean                 enabledScanner;
@@ -123,10 +135,15 @@ public class P extends JavaPlugin implements Listener {
     boolean                 requirePermission;
     String                  usagePermission;
     
+    // THIS HOLDS THE SPAWN LOCATION _IF_ IT HAS BEEN ENABLED, THIS IS
+    // ACTUALLY AN UNDOCUMENTED FEATURE AT THE MOMENT
     public Location     gspawn = null;
     
+    // THIS IS USED TO UPGRADE FROM OLDER DATA FORMATS
     public boolean      upgradeCatch;  
     
+    // SHOULD HAVE ONCE BEEN USED BY SOME WORKAROUND CODE IN AN
+    // EXTERNAL PLUGIN BUT NOT SURE ANYMORE
     public static P     __ehook;
     
     static {
@@ -738,6 +755,46 @@ public class P extends JavaPlugin implements Listener {
         Bukkit.getPluginManager().registerEvent(ChannelChatEvent.class, this, EventPriority.LOW, pe, this);
     }
     
+    /*
+     * This provides support for EssentialsChat, or really anything else. It
+     * basically does this using a hacky kind of method. But, the good news
+     * is that it of course works!
+     */
+    private void setupForChatFormat() {
+        class ____ecl implements Listener {
+            @EventHandler(priority = EventPriority.LOWEST)
+            public void onPlayerChat(PlayerChatEvent event) {
+                FactionPlayer           fp;
+                Player                  player;
+                
+                player = event.getPlayer();
+                
+                if (player == null) {
+                    return;
+                }
+                
+                fp = getFactionPlayer(player.getName());
+                
+                if (fp == null) {
+                    event.setFormat(event.getFormat().replace("{FACTION}", ""));
+                    event.setFormat(event.getFormat().replace("{faction}", ""));
+                    event.setFormat(event.getFormat().replace("[FACTION]", ""));
+                    event.setFormat(event.getFormat().replace("[faction]", ""));
+                } else {
+                    event.setFormat(event.getFormat().replace("{FACTION}", fp.faction.name));
+                    event.setFormat(event.getFormat().replace("{faction}", fp.faction.name));
+                    event.setFormat(event.getFormat().replace("[FACTION]", fp.faction.name));
+                    event.setFormat(event.getFormat().replace("[faction]", fp.faction.name));
+                }
+                
+                return;
+            }
+        }
+        
+        getServer().getPluginManager().registerEvents(new ____ecl(), this);
+        return;
+    }
+    
     @Override
     public void onEnable() {
         File                            file;
@@ -748,24 +805,46 @@ public class P extends JavaPlugin implements Listener {
         FileConfiguration               cfg;
         File                            fcfg;
         List<String>                    we;
-            
+        Object                          essentialsChat;
+        
         seeChunkLast = new HashMap<String, Long>();
         scannerWait = new HashMap<String, Long>();
         autoClaim = new HashSet<String>();
+        mapView = new HashSet<String>();
         
         /*
+         * This is done to support EssentialsChat, which does not have a very
+         * good API. It is also done to support hopefully any other plugin that
+         * properly uses the format attribute in chat events.
+         */
+        setupForChatFormat();
+        
+        /*
+         * HeroChat does not provide a public API this is one big hack!
+         * 
          * This was done for a guy who wanted to be able to include something such
          * as {faction} in the Herochat plugin and have it replaced with the player's
          * faction. To facililate this I had to do a lot of dirty trickery. The good
          * news is that all that ugly stuff is contained in a single method called
          * 'setupForHeroChat'. The code below simply detects if Herochat has been
          * loaded.
+         * 
+         * If I am not mistaken the setupForChatFormat should properly handle Herochat
+         * but they made their chat handler run under the MONITOR event priority so there
+         * is not way to get an event call after it changes the format/message parameters.
+         * 
+         * So this is basically the only way unless we do hackery on Bukkit to create
+         * a new priority.
          */
         try {
             Class.forName("com.dthielke.herochat.MessageFormatSupplier");
             setupForHeroChat();
+            getLogger().info("Herochat [DETECTED]");
         } catch (ClassNotFoundException ex) {
-            getLogger().info("The plugin HeroChat was not detected. Report if this is an error!");
+            getLogger().info("Herochat [NOT-DETECTED]");
+        } catch (Exception ex) {
+            getLogger().info("Herochat [SUPPORT EXCEPTION]");
+            ex.printStackTrace();
         }
         
         fcfg = new File("kfactions.config.yml");
@@ -881,6 +960,7 @@ public class P extends JavaPlugin implements Listener {
                 tmp.add(worldName);
             }
             
+            cfg.set("usagePermission", usagePermission);
             cfg.set("requirePermission", requirePermission);
             cfg.set("bypassPermission", bypassPermission);
             cfg.set("repawnAtFactionHome", repawnAtFactionHome);
@@ -1090,6 +1170,84 @@ public class P extends JavaPlugin implements Listener {
         }
         , 20 * 10 * 60, 20 * 10 * 60); // every 10 minutes seems decent
         // make job to go through and calculate zappers for factions
+    }
+    
+    /**
+     * This will display the faction map to the player of their surrounding area. The
+     * useArgs should be set to true only if the location for the player will return
+     * invalid coordinates which will happen if you call this from a player move event
+     * because the move has not actually happened yet so in that case the useArgs is
+     * set to true and the correct px and py are provided (py is really pz). Any other
+     * time useArgs is set to false and px and py can be set to anything.
+     * 
+     * @param player                the player to send the map for
+     * @param useArgs               if true use work around from being called from move event handler
+     * @param px                    move event handler work around
+     * @param py                    move event handler work around
+     */
+    public void showPlayerMap(Player player, boolean useArgs, int px, int py) {
+        final int colcnt =           41;
+        final int rowcnt =           8;
+        
+        int                          bx, ex, x;
+        int                          by, ey, y;
+        FactionChunk                 fc;
+        Map<String, Character>       sym;
+        char                         bsym;
+        char                         _sym;
+        StringBuffer                 sb;
+        char                         c;
+        
+        bsym = 'A';
+        
+        sym = new HashMap<String, Character>();
+        
+        if (!useArgs) {
+            px = player.getLocation().getBlockX() >> 4;
+            py = player.getLocation().getBlockZ() >> 4;
+        }
+        
+        bx = px - (colcnt >> 1);
+        by = py - (rowcnt >> 1);
+        ex = bx + colcnt;
+        ey = by + rowcnt;
+        
+        for (y = by; y < ey; ++y) {
+            sb = new StringBuffer();
+            sb.append("§7");
+            for (x = bx; x < ex; ++x) {
+                fc = getFactionChunk(player.getWorld(), x, y);
+                if (fc == null) {
+                    if (px == x && py == y) {
+                        sb.append("§c+§7");
+                    } else {
+                        sb.append("+");
+                    }
+                } else {
+                    if (sym.containsKey(fc.faction.name)) {
+                        _sym = sym.get(fc.faction.name);
+                    } else {
+                        ++bsym;
+                        sym.put(fc.faction.name, bsym);
+                        _sym = bsym;
+                    }
+                    if (px == x && py == y) {
+                        sb.append(String.format("§c%c§7", _sym));
+                    } else {
+                        sb.append(String.format("§a%c§7", _sym));
+                    }
+                }
+            }
+            player.sendMessage(String.format("§7%s", sb.toString()));
+        }
+        
+        sb = new StringBuffer();
+        
+        for (Entry<String, Character> e : sym.entrySet()) {
+            sb.append(String.format("§7%s:%c ", e.getKey(), e.getValue()));
+        }
+        
+        player.sendMessage(sb.toString());
     }
     
     public void teleportPlayer(Player p, Location l) {
@@ -1664,6 +1822,14 @@ public class P extends JavaPlugin implements Listener {
             _tc = getFactionChunk(world, tx, tz);
             if (_tc != null)
                 tc = _tc.faction;
+            
+            if (mapView.contains(player.getName())) {
+                // EXECUTION WILL BE HERE WHEN THERE HAS BEEN A TRANSISTION
+                // FROM ONE CHUNK ONTO ANOTHER _AND_ THE PLAYER IS REGISTERED
+                // TO RECIEVE MAP VIEWS
+                showPlayerMap(player, true, tx, tz);
+            }            
+            
             // IF WALKING FROM SAME TO SAME SAY NOTHING
             if (fc == tc) {
                 return;
@@ -1876,6 +2042,16 @@ public class P extends JavaPlugin implements Listener {
                 player.sendMessage("§7-------------------------------------");
                 return;
             }
+
+            if (args[1].equalsIgnoreCase("map")) {
+                player.sendMessage("§7-------------MAP----------------");
+                player.sendMessage("§7These are the map commands.");
+                player.sendMessage("§7-------------------------------------");
+                player.sendMessage("§map§r - will display a map");
+                player.sendMessage("§automap§r - will display a map when moving around");
+                player.sendMessage("§7-------------------------------------");
+                return;
+            }            
             
             // help teleport
             if (args[1].equalsIgnoreCase("teleport")) {
@@ -1886,8 +2062,8 @@ public class P extends JavaPlugin implements Listener {
                 player.sendMessage("§7You also can not teleport to a player in your faction");
                 player.sendMessage("§7who is a higher rank than you. They must teleport you");
                 player.sendMessage("§7to them. You can teleport to someone of equal or lower");
+                player.sendMessage("§7rank than your self.");                
                 player.sendMessage("§7-------------------------------------");
-                player.sendMessage("§7rank than your self.");
                 player.sendMessage("§atptp§r <player> <player|home> - teleport player to player ");
                 player.sendMessage("§ahome§r - short for tptp <yourname> home");
                 player.sendMessage("§aspawn§r - short for tptp <yourname> spawn");
@@ -1986,7 +2162,7 @@ public class P extends JavaPlugin implements Listener {
         player.sendMessage("§dhelp home§r - home commands");
         player.sendMessage("§dhelp teleport§r - teleport commands");
         player.sendMessage("§e/f c <message>§r - faction chat message");
-        player.sendMessage("§7-------------------------------------");
+        player.sendMessage("§dhelp map§r - map commands");
         player.sendMessage("§7For example: §a/f help basic§r");
         player.sendMessage("§7For example: §a/f help friends§r");
         player.sendMessage("§7-------------------------------------");
@@ -2292,6 +2468,7 @@ public class P extends JavaPlugin implements Listener {
         
         if (requirePermission) {
             if (!player.hasPermission(usagePermission)) {
+                player.sendMessage(String.format("§7You need the %s permission.", usagePermission));
                 return true;
             }
         }
@@ -2346,6 +2523,22 @@ public class P extends JavaPlugin implements Listener {
             return true;
         }
 
+        if (cmd.equals("automap")) {
+            if (mapView.contains(player.getName())) {
+                player.sendMessage("§7[f] The auto map is now §aOFF§r.");
+                mapView.remove(player.getName());
+            }  else {
+                showPlayerMap(player, false, 0, 0);
+                mapView.add(player.getName());
+                player.sendMessage("§7[f] The auto map is now §aON§r.");
+            }
+            return true;
+        }
+        
+        if (cmd.equals("map")) {
+            showPlayerMap(player, false, 0, 0);
+            return true;
+        }
         
         if (cmd.equals("showanchors")) {
             Iterator<WorldAnchorLocation>       i;
