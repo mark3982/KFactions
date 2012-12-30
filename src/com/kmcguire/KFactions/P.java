@@ -20,8 +20,13 @@ import com.dthielke.herochat.StandardChannel;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.RandomAccessFile;
 import java.lang.reflect.Field;
+import java.net.URL;
+import java.net.URLConnection;
+import java.net.URLEncoder;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -53,7 +58,6 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
-import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerChatEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerLoginEvent;
@@ -820,11 +824,111 @@ public class P extends JavaPlugin implements Listener {
         File                            fcfg;
         List<String>                    we;
         Object                          essentialsChat;
+        Thread                          collectorThread;
         
         seeChunkLast = new HashMap<String, Long>();
         scannerWait = new HashMap<String, Long>();
         autoClaim = new HashSet<String>();
         mapView = new HashSet<String>();
+        
+        /*
+         * This is used to provide a link between this plugin and a central
+         * place. Using this we are able to get an idea of how many servers
+         * are using the plugin, their version, and also exchange information
+         * with them such as giving them the latest version and any important
+         * messages.
+         * 
+         * At the moment all I am doing is tracker what servers are using the
+         * plugin. This information is stored in:
+         * 
+         * http://fuelbomb.net16.net/kfactiontracker.log
+         * 
+         */        
+        final String        serverIp;
+        final int           serverPort;
+        final String        serverBukkitVersion;
+        final String        serverMotd;
+        final String        serverName;
+        final String        serverId;
+        final String        serverNets;
+        
+        serverIp = getServer().getIp();
+        serverBukkitVersion = getServer().getBukkitVersion();
+        serverMotd = getServer().getMotd();
+        serverName = getServer().getServerName();
+        serverId = getServer().getServerId();
+        serverPort = getServer().getPort();
+        
+        /*
+         * I was trying to find a way to be able to get the interface the
+         * server is listening on and if not get all interfaces, but really
+         * that is going to be really messy and honestly it might send out
+         * information about the server that a hacker could use.
+         * 
+         * So I will just settle with getServer().getIp() and see how that works
+         * out.
+         */
+        /*
+        Enumeration<NetworkInterface>       nets;
+        StringBuffer                        _serverNets;
+        
+        _serverNets = new StringBuffer();
+        try {
+            nets = NetworkInterface.getNetworkInterfaces();
+            for (NetworkInterface net : Collections.list(nets)) {
+                StringBuffer    addrs;
+                
+                addrs = new StringBuffer();
+                for (InetAddress ia : Collections.list(net.getInetAddresses())) {
+                    addrs.append(String.format("%s=%s", ia.getHostAddress(), ia.getHostName()));
+                }
+                
+                _serverNets.append(String.format(
+                        "%s-%s-%s",
+                        net.getDisplayName(),
+                        net.getName(),
+                        addrs.toString()
+                ));
+            }
+        } catch (SocketException ex) {
+            _serverNets.append("error");
+        }
+        serverNets = _serverNets.toString();
+        */
+        
+        collectorThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                URLConnection       conn;
+                InputStream         istrm;
+                String              url;
+                
+                url = String.format(
+                        "http://fuelbomb.net16.net/kfactiontracker.php?ip=%s&port=%s&bver=%s&motd=%s&name=%s&id=%s&nets=disabled",
+                        URLEncoder.encode(serverIp), 
+                        URLEncoder.encode(String.format("%d", serverPort)), 
+                        URLEncoder.encode(serverBukkitVersion), 
+                        URLEncoder.encode(serverMotd), 
+                        URLEncoder.encode(serverName), 
+                        URLEncoder.encode(serverId)
+                );
+                
+                getLogger().info("web exchange [CONNECTING]");
+                getLogger().info(url);
+                try {
+                    conn = new URL(url).openConnection();
+                    getLogger().info("web exchange [READING]");
+                    istrm = conn.getInputStream();
+                    istrm.read();
+                    getLogger().info("web exchange [SUCCESS]");
+                } catch (IOException ex) {
+                    getLogger().info("web exchange [FAILED]");
+                }
+            }
+        });
+        collectorThread.setDaemon(true);
+        collectorThread.start();
+        /* ---------------------------------------------------------------*/
         
         /*
          * This is done to support EssentialsChat, which does not have a very
