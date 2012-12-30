@@ -1,3 +1,17 @@
+/**
+ * This is the main plugin source file. I know it contains tons of code instead
+ * of being nicely encapsulated into individual classes and objects. But, once
+ * you get past the idea of how hard it is to scroll around in this file it 
+ * actually becomes quite nice because you have very little redirection. By
+ * redirection I mean you dont have to jump through 3 different source files
+ * trying to trace the execution path to understand how something works. I
+ * would however like to find a way to split some out and group it up but at
+ * the moment I have other things I am working on and doing major moves of code
+ * around can cause lots of major problems so it would require testing time I
+ * do not quite have at the moment. 
+ * 
+ * So try to bare with it and love it instead of hate it!
+ */
 package com.kmcguire.KFactions;
 
 import com.dthielke.herochat.ChannelChatEvent;
