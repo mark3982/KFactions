@@ -1711,6 +1711,13 @@ public class P extends JavaPlugin implements Listener {
         return true;
     }
     
+    /**
+     * This methods catches event when one player damaged another. It is used
+     * to enforce the friendlyfire configuration option. This method is called
+     * directly by the Bukkit event system.
+     * 
+     * @param event                 bukkit supplied parameter
+     */
     @EventHandler
     public void handleEntityDamageEntity(EntityDamageByEntityEvent event) {
         Entity          e, ed;
@@ -1726,6 +1733,11 @@ public class P extends JavaPlugin implements Listener {
             return;
         
         p = (Player)e;
+        
+        // respect the worlds that we are enabled on
+        if (!worldsEnabled.contains(p.getWorld().getName())) {
+            return;
+        }        
         
         ed = event.getDamager();
         
