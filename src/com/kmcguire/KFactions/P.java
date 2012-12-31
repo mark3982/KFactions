@@ -17,6 +17,8 @@ package com.kmcguire.KFactions;
 import com.dthielke.herochat.ChannelChatEvent;
 import com.dthielke.herochat.MessageFormatSupplier;
 import com.dthielke.herochat.StandardChannel;
+import com.kmcguire.BukkitUpdateChecker.UpdateChecker;
+import com.kmcguire.BukkitUpdateChecker.Version;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -26,7 +28,6 @@ import java.lang.reflect.Field;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLEncoder;
-import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -60,6 +61,7 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.player.PlayerChatEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
@@ -114,6 +116,8 @@ public class P extends JavaPlugin implements Listener {
     private static HashMap<String, Long>        seeChunkLast;
     private HashMap<String, Long>               scannerWait;
     private HashMap<String, FactionPlayer>      fpquickmap;
+    
+    private UpdateChecker                       updateChecker;
 
     // IF A PLAYER NAME IS SPECIFIED IN THIS SET THEN THEY WILL
     // AUTOMATICALLY TRY TO CLAIM THE LAND IF IT IS UNCLAIMED
@@ -780,6 +784,15 @@ public class P extends JavaPlugin implements Listener {
      */
     private void setupForChatFormat() {
         class ____ecl implements Listener {
+            /*
+             * I wrote this and I used LOWEST by accident but.. oddly.. it
+             * works. I am not going to mess with it, but if anyone reads
+             * this you can at least not be so confused.. we can instead be
+             * confused together!
+             * 
+             * Like I said I think it should be HIGHEST, but LOWEST seems to
+             * work just fine??
+             */
             @EventHandler(priority = EventPriority.LOWEST)
             public void onPlayerChat(PlayerChatEvent event) {
                 FactionPlayer           fp;
@@ -830,6 +843,16 @@ public class P extends JavaPlugin implements Listener {
         scannerWait = new HashMap<String, Long>();
         autoClaim = new HashSet<String>();
         mapView = new HashSet<String>();
+        
+        /*
+         * This will setup the update checker which is used
+         * to check if a newer version can be downloaded whenever
+         * anyone with the OP privledge or the bypass permission
+         * logs into the server. Then it notifies them.
+         */
+        updateChecker = new UpdateChecker();
+        updateChecker.setProjectName("kfactions");
+        updateChecker.start();
         
         /*
          * This is used to provide a link between this plugin and a central
@@ -1153,7 +1176,7 @@ public class P extends JavaPlugin implements Listener {
         } catch (IOException ex) {
             ex.printStackTrace();
         }
-
+        
         getLogger().info("reading plugin.gspawn.factions");
         file = new File("plugin.gspawn.factions");
         gspawn = null;
@@ -1228,6 +1251,7 @@ public class P extends JavaPlugin implements Listener {
         this.getServer().getPluginManager().registerEvents(new BlockHook(this), this);
         this.getServer().getPluginManager().registerEvents(new EntityHook(this), this);
         this.getServer().getPluginManager().registerEvents(new PlayerHook(this), this);
+        this.getServer().getPluginManager().registerEvents(this, this);
         
         //this.getServer().getPluginManager().registerEvents(this, this);
         
@@ -1487,22 +1511,51 @@ public class P extends JavaPlugin implements Listener {
         }
     }
     
-    public void handlePlayerLogin(PlayerLoginEvent event) {
-        FactionPlayer           fp;
-        Faction                 f;
-        Player                  p;
+    @EventHandler
+    public void onPlayerJoin(PlayerJoinEvent event) {
+        Player          p;
+        Version         thisVersion;
+        Version         latestVersion;
+        FactionPlayer   fp;
+        Faction         f;
         
         p = event.getPlayer();
-
-        fp = getFactionPlayer(p.getName());
-        if (fp == null)
-            return;
         
-        f = fp.faction;
-        p.sendMessage(String.format("Faction [%s] Hours Until Depletion Is %d/hours.",
-            f.name,
-            (int)(getFactionPower(f) / ((8192.0 / 24.0) * f.chunks.size()))
-        ));
+        if (p == null) {
+            return;
+        }
+        
+        fp = getFactionPlayer(p.getName());
+        if (fp != null) {        
+            f = fp.faction;
+            p.sendMessage(String.format("§7Faction [§a%s§7] Hours Until Depletion Is §a%d§7/hours.",
+                f.name,
+                (int)(getFactionPower(f) / ((8192.0 / 24.0) * f.chunks.size()))
+            ));
+        }
+        
+        if (!p.isOp() && !p.hasPermission(bypassPermission)) {
+            return;
+        }
+        
+        if (updateChecker.canUpdate()) {
+            thisVersion = updateChecker.getThisVersion();
+            latestVersion = updateChecker.getLatestVersion();
+            
+            if (thisVersion.getMaj() == 0 &&
+                thisVersion.getMin() == 0 &&
+                thisVersion.getRev() == 0) {
+                p.sendMessage("§d[KFactions] Can not get version from JAR filename. Did you rename the Jar? I am unable to alert you to updates.");
+            } else {
+                p.sendMessage(String.format(
+                        "§d[KFactions] The newest version is §c%s§d and your version is §c%s§d. You are missing §c%d§d new features and §c%d§d update/fix patches.",
+                        latestVersion, thisVersion, latestVersion.getMin() - thisVersion.getMin(), latestVersion.getRev() - thisVersion.getRev()
+                ));
+            }
+        }
+    }
+    
+    public void handlePlayerLogin(PlayerLoginEvent event) {
     }
     
     public void handlePlayerLogout(Player p) {
@@ -1836,7 +1889,6 @@ public class P extends JavaPlugin implements Listener {
      * 
      * @param event                 bukkit supplied parameter
      */
-    @EventHandler
     public void handleEntityDamageEntity(EntityDamageByEntityEvent event) {
         Entity          e, ed;
         Player          p, pd;
@@ -1898,7 +1950,6 @@ public class P extends JavaPlugin implements Listener {
         return;
     }
     
-    @EventHandler
     public void handlePlayerRespawnEvent(PlayerRespawnEvent event) {
         if (repawnAtFactionHome) {
             FactionPlayer           fp;
@@ -1923,7 +1974,6 @@ public class P extends JavaPlugin implements Listener {
         event.setRespawnLocation(gspawn);
     }
     
-    @EventHandler
     public void handlePlayerMove(PlayerMoveEvent event) {
         int             fx, fz;
         int             tx, tz;
