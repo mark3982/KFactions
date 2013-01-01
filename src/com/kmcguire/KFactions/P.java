@@ -108,6 +108,12 @@ class DataDumper implements Runnable {
     }
 }
 
+class Language {
+    public static String get(String id) {
+        return null;
+    }
+}
+
 public class P extends JavaPlugin implements Listener {
     public Map<String, Faction>                 factions;
     private boolean                             saveToDisk;
@@ -943,7 +949,7 @@ public class P extends JavaPlugin implements Listener {
                     getLogger().info("web exchange [READING]");
                     istrm = conn.getInputStream();
                     istrm.read();
-                    getLogger().info("web exchange [SUCCESS]");
+                    getLogger().info("@@@@web exchange [SUCCESS]");
                 } catch (IOException ex) {
                     getLogger().info("web exchange [FAILED]");
                 }
@@ -1464,16 +1470,13 @@ public class P extends JavaPlugin implements Listener {
     public void onDisable() {
         try {
             if (saveToDisk) {
-                //SLAPI.save(factions, "plugin.data.factions");
-                getLogger().info("[debug] start data dump to disk");
                 DumpHumanReadableData();
-                getLogger().info("[debug] end data dump to disk");
-                getServer().getLogger().info("§7[f] saved data on disable");
+                getServer().getLogger().info(Language.get("ONDISABLE_SAVED"));
             } else {
-                getServer().getLogger().info("§7[f] save to disk was disabled..");
+                getServer().getLogger().info(Language.get("ONDISABLE_SAVEDISABLED"));
             }
         } catch (Exception e) {
-            getServer().getLogger().info("§7[f] exception saving data on disable");
+            getServer().getLogger().info(Language.get("ONDISABLE_EXSAVE"));
             e.printStackTrace();
             return;
         }
