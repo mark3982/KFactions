@@ -19,6 +19,7 @@ import com.dthielke.herochat.MessageFormatSupplier;
 import com.dthielke.herochat.StandardChannel;
 import com.kmcguire.BukkitUpdateChecker.UpdateChecker;
 import com.kmcguire.BukkitUpdateChecker.Version;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -98,9 +99,10 @@ class DataDumper implements Runnable {
             try {
                 //SLAPI.save(p.factions, "plugin.data.factions");
                 p.DumpHumanReadableData();
-                p.smsg("saved data to disk");
-            } catch (Exception e) {
-                p.smsg("error when trying to save data to disk");
+                p.smsg(Language.get("DATASAVE_SUCCESS"));
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                p.smsg(Language.get("DATASAVE_FAILED"));
             }
             /// SCHEDULE OURSELVES TO RUN AGAIN ONCE WE ARE DONE
             p.getServer().getScheduler().scheduleAsyncDelayedTask(p, this, 20 * 60 * 10);
@@ -109,8 +111,29 @@ class DataDumper implements Runnable {
 }
 
 class Language {
+    private static HashMap<String, String>         translation;
+    
     public static String get(String id) {
-        return null;
+        return translation.get(id);
+    }
+    
+    public static void loadFrom(String name) {
+        YamlConfiguration       cfg;
+        
+        cfg = new YamlConfiguration();
+        translation = new HashMap<String, String>();
+        
+        try {
+            cfg.load(Language.class.getClassLoader().getResourceAsStream(name));
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        } catch (InvalidConfigurationException ex) {
+            ex.printStackTrace();
+        }
+        
+        for (String key : cfg.getKeys(false)) {
+            translation.put(key, cfg.getString(key));
+        }
     }
 }
 
@@ -215,7 +238,7 @@ public class P extends JavaPlugin implements Listener {
             return null;
         }
         
-        getLogger().info(" - data loaded into memory; creating structures");
+        getLogger().info(Language.get("DATALOAD_DATANOWINMEMORY"));
         
         m = cfg.getValues(false);
         
@@ -759,8 +782,6 @@ public class P extends JavaPlugin implements Listener {
 
                 format = stdc.getFormat();
 
-                getLogger().info(String.format("clazz:%s format:%s", stdc.getClass().getName(), format));
-
                 try {
                     field = clazz.getDeclaredField("formatSupplier");
                     field.setAccessible(true);
@@ -851,6 +872,12 @@ public class P extends JavaPlugin implements Listener {
         mapView = new HashSet<String>();
         
         /*
+         * This will setup support for language translations provided there
+         * exists a translation file for the specified language.
+         */
+        Language.loadFrom("messages.en.yml");
+        
+        /*
          * This will setup the update checker which is used
          * to check if a newer version can be downloaded whenever
          * anyone with the OP privledge or the bypass permission
@@ -883,7 +910,8 @@ public class P extends JavaPlugin implements Listener {
         
         serverIp = getServer().getIp();
         serverBukkitVersion = getServer().getBukkitVersion();
-        serverMotd = getServer().getMotd();
+        //serverMotd = getServer().getMotd();
+        serverMotd = "disabled";
         serverName = getServer().getServerName();
         serverId = getServer().getServerId();
         serverPort = getServer().getPort();
@@ -942,16 +970,16 @@ public class P extends JavaPlugin implements Listener {
                         URLEncoder.encode(serverId)
                 );
                 
-                getLogger().info("web exchange [CONNECTING]");
+                getLogger().info(Language.get("ONENABLE_WEBEXCHANDSHAKE"));
                 getLogger().info(url);
                 try {
                     conn = new URL(url).openConnection();
-                    getLogger().info("web exchange [READING]");
+                    getLogger().info(Language.get("ONENABLE_WEBEXCREADING"));
                     istrm = conn.getInputStream();
                     istrm.read();
-                    getLogger().info("@@@@web exchange [SUCCESS]");
+                    getLogger().info(Language.get("ONENABLE_WEBEXCSUCCESS"));
                 } catch (IOException ex) {
-                    getLogger().info("web exchange [FAILED]");
+                    getLogger().info(Language.get("ONENABLE_WEBEXCFAILED"));
                 }
             }
         });
@@ -986,11 +1014,11 @@ public class P extends JavaPlugin implements Listener {
         try {
             Class.forName("com.dthielke.herochat.MessageFormatSupplier");
             setupForHeroChat();
-            getLogger().info("Herochat [DETECTED]");
+            getLogger().info(Language.get("ONENABLE_HEROCHATFOUND"));
         } catch (ClassNotFoundException ex) {
-            getLogger().info("Herochat [NOT-DETECTED]");
+            getLogger().info(Language.get("ONENABLE_NOHEROCHAT"));
         } catch (Exception ex) {
-            getLogger().info("Herochat [SUPPORT EXCEPTION]");
+            getLogger().info(Language.get("ONENABLE_HEROCHATERROR"));
             ex.printStackTrace();
         }
         
@@ -1140,7 +1168,7 @@ public class P extends JavaPlugin implements Listener {
         // ensure that emcvals.txt exists
         femcvals = new File("kfactions.emcvals.txt");
         if (!femcvals.exists()) {
-            getLogger().info("writting new kfactions.emcvals.txt");
+            getLogger().info(Language.get("ONENABLE_WRITTINGEMCVALS"));
             try {
                 raf = new RandomAccessFile(femcvals, "rw");
                 i = EMCMap.emcMap.entrySet().iterator();
@@ -1156,7 +1184,7 @@ public class P extends JavaPlugin implements Listener {
         
         // load from emcvals.txt
         emcMap = new HashMap<Long, Integer>();
-        getLogger().info("reading kfaction.emcvals.txt");
+        getLogger().info(Language.get("ONENABLE_READINGEMCVALS"));
         try {
             String      line;
             int         epos;
@@ -1183,7 +1211,7 @@ public class P extends JavaPlugin implements Listener {
             ex.printStackTrace();
         }
         
-        getLogger().info("reading plugin.gspawn.factions");
+        getLogger().info(Language.get("ONENABLE_READINGGSPAWN"));
         file = new File("plugin.gspawn.factions");
         gspawn = null;
         if (file.exists()) {
@@ -1215,7 +1243,7 @@ public class P extends JavaPlugin implements Listener {
         }
         // IF DATA ON DISK LOAD FROM THAT OTHERWISE CREATE
         // A NEW DATA STRUCTURE FOR STORAGE 
-        getLogger().info("reading faction data");
+        getLogger().info(Language.get("ONENABLE_LOADINGDATA"));
         saveToDisk = true;
         file = new File("plugin.data.factions");
         
@@ -1223,13 +1251,13 @@ public class P extends JavaPlugin implements Listener {
         // YAML data format file which will then be loaded
         if (file.exists() && !fdata.exists()) {
             try {
-                getLogger().info("upgrading old binary format to YAML format!");
+                getLogger().info(Language.get("ONENABLE_UPGRADESTART"));
                 factions = (HashMap<String, Faction>)SLAPI.load("plugin.data.factions");
                 DumpHumanReadableData();
-                getLogger().info(" - YAML format created old data will not be loaded anymore!");
+                getLogger().info(Language.get("ONENABLE_UPGRADECOMPLETE"));
             } catch (Exception ex) {
                 ex.printStackTrace();
-                smsg("error when trying to load data from binary file on disk (SAVE TO DISK DISABLED)");
+                smsg(Language.get("ONENABLE_LOADERROR"));
             }            
         }
         
@@ -1242,14 +1270,14 @@ public class P extends JavaPlugin implements Listener {
                 factions = new HashMap<String, Faction>();
                 saveToDisk = false;
                 ex.printStackTrace();
-                smsg("error when trying to load data from YAML file on disk (SAVE TO DISK DISABLED)");
+                smsg(Language.get("ONENABLE_ERRORINYAML"));
             }
         }
         
         // if both data sources do not exist
         if (!fdata.exists() && !file.exists()) {
             factions = new HashMap<String, Faction>();
-            smsg("found no data on disk creating new faction data");
+            smsg(Language.get("ONENABLE_NODATAMAKENEW"));
         }
         
         // EVERYTHING WENT OKAY WE PREP THE DISK COMMIT THREAD WHICH WILL RUN LATER ON
@@ -1265,7 +1293,7 @@ public class P extends JavaPlugin implements Listener {
         Iterator<Entry<String, Faction>>            fe;
         Faction                                     f;
         
-        getLogger().info("ensuring faction data structures are properly initialized");
+        getLogger().info(Language.get("ONENABLE_ENSUREDATA"));
         fe = factions.entrySet().iterator();
         while (fe.hasNext()) {
             f = fe.next().getValue();
@@ -1281,7 +1309,7 @@ public class P extends JavaPlugin implements Listener {
         
         final P       ___p;
         
-        getLogger().info("creating synchronous task");
+        getLogger().info(Language.get("ONENABLE_SYNCTASKCREATED"));
         ___p = this;
         getServer().getScheduler().scheduleSyncRepeatingTask(this, new Runnable() {
             public P            p;
@@ -1531,7 +1559,7 @@ public class P extends JavaPlugin implements Listener {
         fp = getFactionPlayer(p.getName());
         if (fp != null) {        
             f = fp.faction;
-            p.sendMessage(String.format("§7Faction [§a%s§7] Hours Until Depletion Is §a%d§7/hours.",
+            p.sendMessage(String.format(Language.get("PLAYERJOIN_PWRUNTILDEPLETED"),
                 f.name,
                 (int)(getFactionPower(f) / ((8192.0 / 24.0) * f.chunks.size()))
             ));

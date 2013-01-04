@@ -1,7 +1,0 @@
-ONDISABLE_EXSAVE		=§7[f] exception saving data on disable
-ONDISABLE_SAVEDISABLED	=§7[f] save to disk was disabled..
-ONDISABLE_SAVED			=§7[f] saved data on disable
-ONENABLE_SYNCTASKCREATED=creating synchronous task
-ONENABLE_ENSUREDATA		=ensuring faction data structures are properly initialized
-ONENABLE_NODATAMAKENEW	=found no data on disk creating new faction data
-ONENABLE_ERRORINYAML	=error when trying to load data from YAML file on disk (SAVE TO DISK DISABLED)

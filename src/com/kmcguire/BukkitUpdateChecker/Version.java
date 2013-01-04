@@ -91,7 +91,7 @@ public class Version {
                 tag = part.substring(c);
             }
         } catch (NumberFormatException ex) {
-            ex.printStackTrace();
+            // just silently ignore it
             return;
         }
     }
