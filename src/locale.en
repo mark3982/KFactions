@@ -35,6 +35,34 @@ CANNOTATTACKINNOPVPZONE=§7[f] You can not attack someone who is standing on a N
 AUTOCLAIMTURNOFF=§7[f] Use §a/f autoclaim§r to turn §aOFF§r:
 ENTEREDFACTIONLAND=§7[f] You entered faction %s.
 ENTEREDWILDERNESS=§7[f] You entered wilderness.
+NOTINFACTION=§7[f] You are not in a faction.
+NOTOWNER=§7[f] You are not owner of faction.
+FACTIONDISBANDED=§7[f] §a%s§r has disbanded the faction §a%s§r!
+FACTIONHASNOFRIENDS=§7[f] Faction has no friends.
+FACTIONFRIENDLISTING=§7[f] %s => %d
+FACTIONFRIENDLISTINGDONE=§7[f] Done
+ADDFRIENDSYNTAX=§7Syntax is /f addfriend <name> <rank>. Use again to change rank. Use /f remfriend to remove.
+CANNOTSETFRIENDRANKHIGHER=§7[f] You can not set friend rank of %d because it is higher than your rank of %d.
+ADDEDFRIEND=§7[f] Added friend %s at rank %d.
+REMFRIENDSYNTAX=§7Syntax is /f remfriend <name>.
+CANNOTREMOVEFRIENDHIGHERRANK=§7[f] You can not remove friend with rank of %d because it is higher than your rank of %d.
+REMOVEDFRIEND=§7[f] Removed friend %s
+RENAMESYNTAX=§7[f] The syntax is /f rename <newname>.
+NAMEMUSTHAVELENGTH=§7[f] The name length is zero! It must not be zero.
+FACTIONRENAME=§7[f] The faction §a%s§7 was renamed to §a%s§7.
+RANKTOOLOWTOCLAIM=§7[f] Your rank of %d is below the required rank of %d to claim/unclaim.
+NOMOREFREECLAIMS=§[f] You have exceeded number of free claims. You need %f power to claim this land.
+CHUNKALREADYOWNEDBYYOURFACTION=§7[f] chunk already owned by your faction %s
+WORLDPROHIBITOVERCLAIM=§7[f] This world does not allow claiming of another faction's land!
+FACTIONHASENOUGHPOWERTOHOLD=§7[f] faction %s has enough power to hold this claim
+LOSTCLAIMTO=§7[f] %s lost land claim to %s by %s
+FACTIONCLAIMEDLAND=§7[f] %s of faction %s claimed land
+SETRANKSYNTAX=§7[f] Not enough arguments /f rank <player> <rank>
+PLAYERNOTINFACTION=§7[f] Player is not in a faction.
+YOUNOTINSAMEFACTIONAS=§7[f] You and player are not in the same faction.
+PLAYERATORGREATERRANK=§7[f] Player is already at equal or greater rank than you.
+TARGETPLAYERGREATERRANK=§7[f] Rank you wish to set is equal or greater than you rank! You are unable to set rank for this player.
+RANKFORXIS=§7[f] rank for %s is now %d.
 HELP_DEFAULT
 :§7-------------------------------------
 :§7Faction Help Main Menu

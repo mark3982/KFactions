@@ -3770,7 +3770,7 @@ public class P extends JavaPlugin implements Listener {
             
             fp = getFactionPlayer(player.getName());
             if (fp == null) {
-                player.sendMessage("§7[f] You are not in a faction.");
+                player.sendMessage(Language.get("NOTINFACTION"));
                 return true;
             }
             
@@ -3817,20 +3817,20 @@ public class P extends JavaPlugin implements Listener {
             
             fp = getFactionPlayer(player.getName());
             if (fp == null) {
-                player.sendMessage("§7[f] You are not in a faction.");
+                player.sendMessage(Language.get("NOTINFACTION"));
                 return true;
             }
             
             // MUST BE OWNER OF FACTION
             if (fp.rank < 1000) {
-                player.sendMessage("§7[f] You are not owner of faction.");
+                player.sendMessage(Language.get("NOTOWNER"));
                 return true;
             }
             
             // why the hell am i doing this? --kmcguire
             fp.faction.chunks = new HashMap<String, Map<Long, FactionChunk>>(); 
             
-            getServer().broadcastMessage(String.format("§7[f] §a%s§r has disbanded the faction §a%s§r!", fp.name, fp.faction.name));
+            getServer().broadcastMessage(String.format(Language.get("FACTIONDISBANDED"), fp.name, fp.faction.name));
             
             factions.remove(fp.faction.name.toLowerCase());
             return true;
@@ -3847,21 +3847,21 @@ public class P extends JavaPlugin implements Listener {
             
             fp = getFactionPlayer(player.getName());
             if (fp == null) {
-                player.sendMessage("§7[f] You are not in a faction.");
+                player.sendMessage(Language.get("NOTINFACTION"));
                 return true;
             }
             
             if (fp.faction.friends == null) {
-                player.sendMessage("§7[f] Faction has no friends.");
+                player.sendMessage(Language.get("FACTIONHASNOFRIENDS"));
                 return true;
             }
             
             i = fp.faction.friends.entrySet().iterator();
             while (i.hasNext()) {
                 e = i.next();
-                player.sendMessage(String.format("§7[f] %s => %d", e.getKey(), e.getValue()));
+                player.sendMessage(String.format(Language.get("FACTIONFRIENDLISTING"), e.getKey(), e.getValue()));
             }
-            player.sendMessage("§7[f] Done");
+            player.sendMessage(Lanuage.get("FACTIONFRIENDLISTINGDONE"));
             return true;
         }
         
@@ -3873,12 +3873,12 @@ public class P extends JavaPlugin implements Listener {
 
             fp = getFactionPlayer(player.getName());
             if (fp == null) {
-                player.sendMessage("§7[f] You are not in a faction.");
+                player.sendMessage(Language.get("NOTINFACTION"));
                 return true;
             }
             
             if (args.length < 3) {
-                player.sendMessage("Syntax is /f addfriend <name> <rank>. Use again to change rank. Use /f remfriend to remove.");
+                player.sendMessage(Language.get("ADDFRIENDSYNTAX"));
                 return true;
             }
             
@@ -3886,7 +3886,7 @@ public class P extends JavaPlugin implements Listener {
             frank = Integer.parseInt(args[2]);
 
             if (frank >= fp.rank) {
-                player.sendMessage(String.format("§7[f] You can not set friend rank of %d because it is higher than your rank of %d.", frank, fp.rank));
+                player.sendMessage(String.format(Language.get("CANNOTSETFRIENDRANKHIGHER"), frank, fp.rank));
                 return true;
             }
             
@@ -3894,7 +3894,7 @@ public class P extends JavaPlugin implements Listener {
                 fp.faction.friends = new HashMap<String, Integer>();
 
             fp.faction.friends.put(friendName, frank);
-            sendFactionMessage(fp.faction, String.format("§7[f] Added friend %s at rank %d\n", friendName, frank));
+            sendFactionMessage(fp.faction, String.format(Language.get("ADDEDFRIEND"), friendName, frank));
             return true;
         }
         
@@ -3906,12 +3906,12 @@ public class P extends JavaPlugin implements Listener {
 
             fp = getFactionPlayer(player.getName());
             if (fp == null) {
-                player.sendMessage("§7[f] You are not in a faction.");
+                player.sendMessage(Language.get("NOTINFACTION"));
                 return true;
             }
             
             if (args.length < 2) {
-                player.sendMessage("Syntax is /f remfriend <name>.");
+                player.sendMessage(Language.get("REMFRIENDSYNTAX"));
                 return true;
             }
             
@@ -3923,13 +3923,13 @@ public class P extends JavaPlugin implements Listener {
             if (fp.faction.friends.containsKey(friendName)) {
                 frank = fp.faction.friends.get(friendName);
                 if (frank >= fp.rank) {
-                    player.sendMessage(String.format("§7[f] You can not remove friend with rank of %d because it is higher than your rank of %d.", frank, fp.rank));
+                    player.sendMessage(String.format(Language.get("CANNOTREMOVEFRIENDHIGHERRANK"), frank, fp.rank));
                     return true;
                 }
             }
             
             fp.faction.friends.remove(friendName);
-            sendFactionMessage(fp.faction, String.format("§7[f] Removed friend %s\n", friendName));
+            sendFactionMessage(fp.faction, String.format(Language.get("REMOVEDFRIEND"), friendName));
             return true;            
         }
         
@@ -3940,17 +3940,17 @@ public class P extends JavaPlugin implements Listener {
             fp = getFactionPlayer(player.getName());
             
             if (fp == null) {
-                player.sendMessage("§7[f] You are not in a faction.");
+                player.sendMessage(Language.get("NOTINFACTION"));
                 return true;
             }
             
             if (fp.rank < 1000) {
-                player.sendMessage("§7[f] You need to be owner of this faction to change the rank!");
+                player.sendMessage(Language.get("NOTOWNER"));
                 return true;
             }
             
             if (args.length < 2) {
-                player.sendMessage("§7[f] The syntax is /f rename <newname>.");
+                player.sendMessage(Language.get("RENAMESYNTAX"));
                 return true;                
             }
             
@@ -3959,11 +3959,11 @@ public class P extends JavaPlugin implements Listener {
             newName = sanitizeString(newName);
             
             if (newName.length() < 1) {
-                player.sendMessage("§7[f] The name length is zero!");
+                player.sendMessage(Language.get("NAMEMUSTHAVELENGTH"));
                 return true;
             }
             
-            getServer().broadcastMessage(String.format("§7[f] The faction §a%s§7 was renamed to §a%s§7.", fp.faction.name, newName));
+            getServer().broadcastMessage(String.format(Language.get("FACTIONRENAME"), fp.faction.name, newName));
             
             synchronized (factions) {
                 factions.remove(fp.faction.name.toLowerCase());
@@ -3979,21 +3979,16 @@ public class P extends JavaPlugin implements Listener {
             FactionChunk                fchunk;
             double                      pow;
             
-            if (player == null) {
-                player.sendMessage("§7[f] uhoh plyer is null");
-                return true;
-            }
-            
             fp = getFactionPlayer(player.getName());
             
             if (fp == null) {
-                player.sendMessage("§7[f] You are not in a faction.");
+                player.sendMessage(Language.get("NOTINFACTION"));
                 return true;
             }
             
             // IS OUR RANK GOOD ENOUGH?
             if (fp.rank < fp.faction.mrc) {
-                player.sendMessage(String.format("§7[f] Your rank of %d is below the required rank of %d to claim/unclaim.", fp.rank, fp.faction.mrc));
+                player.sendMessage(String.format(Language.get("RANKTOOLOWTOCLAIM"), fp.rank, fp.faction.mrc));
                 return true;
             }
             
@@ -4007,7 +4002,7 @@ public class P extends JavaPlugin implements Listener {
             if (c >= numberOfFreeClaims) {
                 pow = getFactionPower(fp.faction);
                 if (pow < powerUsedEachClaim) {
-                    player.sendMessage(String.format("§[f] You have exceeded number of free claims. You need %f power to claim this land.", powerUsedEachClaim));
+                    player.sendMessage(String.format(Language.get("NOMOREFREECLAIMS"), powerUsedEachClaim));
                     return true;
                 }
                 synchronized(fp.faction) {
@@ -4021,21 +4016,21 @@ public class P extends JavaPlugin implements Listener {
             fchunk = getFactionChunk(player.getWorld(), x >> 4, z >> 4);
             if (fchunk != null) {
                 if (fchunk.faction == fp.faction) {
-                    player.sendMessage(String.format("§7[f] chunk already owned by your faction %s", fchunk.faction.name));
+                    player.sendMessage(String.format(Language.get("CHUNKALREADYOWNEDBYYOURFACTION"), fchunk.faction.name));
                     return true;
                 }
                 
                 if (noGriefPerWorld.contains(player.getWorld().getName())) {
-                    player.sendMessage("§7[f] This world does not allow claiming of another faction's land!");
+                    player.sendMessage(Language.get("WORLDPROHIBITOVERCLAIM"));
                     return true;
                 }
 
                 if (fchunk.faction != fp.faction) {
                     if (getFactionPower(fchunk.faction) >= fchunk.faction.chunks.size()) {
-                        player.sendMessage(String.format("§7[f] faction %s has enough power to hold this claim", fchunk.faction.name));
+                        player.sendMessage(String.format(Language.get("FACTIONHASENOUGHPOWERTOHOLD"), fchunk.faction.name));
                         return true;
                     }
-                    getServer().broadcastMessage(String.format("§7[f] %s lost land claim to %s by %s", fchunk.faction.name, fp.faction.name, fp.name));
+                    getServer().broadcastMessage(String.format(Language.get("LOSTCLAIMTO"), fchunk.faction.name, fp.faction.name, fp.name));
                     fchunk.faction.chunks.remove(getChunkLong(player.getWorld(), x >> 4, z >> 4));
                 }
             }
@@ -4056,7 +4051,7 @@ public class P extends JavaPlugin implements Listener {
             
             fp.faction.chunks.get(player.getWorld().getName()).put(LongHash.toLong(x >> 4, z >> 4), fchunk);
             //fp.faction.chunks.put(getChunkLong(player.getWorld(), x >> 4, z >> 4), fchunk);
-            getServer().broadcastMessage(String.format("§7[f] %s of faction %s claimed land", fp.name, fp.faction.name));
+            getServer().broadcastMessage(String.format(Language.get("FACTIONCLAIMEDLAND"), fp.name, fp.faction.name));
             return true;
         }
         
@@ -4066,7 +4061,7 @@ public class P extends JavaPlugin implements Listener {
             int                     nrank;
             
             if (args.length < 3) {
-                player.sendMessage("§7[f] Not enough arguments /f rank <player> <rank>");
+                player.sendMessage(Language.get("SETRANKSYNTAX"));
                 return true;
             }
             
@@ -4074,33 +4069,33 @@ public class P extends JavaPlugin implements Listener {
             mp = getFactionPlayer(player.getName());
             
             if (fp == null) {
-                player.sendMessage("§7[f] Player is not in a faction.");
+                player.sendMessage(Language.get("PLAYERNOTINFACTION"));
                 return true;
             }
             
             if (mp == null) {
-                player.sendMessage("§7[f] You are not in a faction.");
+                player.sendMessage(Language.get("NOTINFACTION"));
                 return true;
             }
             
             if (fp.faction != mp.faction) {
-                player.sendMessage("§7[f] You and player are not in the same faction.");
+                player.sendMessage(Language.get("YOUNOTINSAMEFACTIONAS"));
             }
             
             if ((fp.rank >= mp.rank) && (!player.isOp())) {
-                player.sendMessage("§7[f] Player is already at equal or greater rank than you.");
+                player.sendMessage(Language.get("PLAYERATORGREATERRANK"));
                 return true;
             }
             
             nrank = Integer.valueOf(args[2]);
             
             if ((nrank >= mp.rank) && (!player.isOp())) {
-                player.sendMessage("§7[f] Rank you wish to set is equal or greater than you rank. [rejected]");
+                player.sendMessage(Language.get("TARGETPLAYERGREATERRANK"));
                 return true;
             }
             
             fp.rank = nrank;
-            player.sendMessage(String.format("§7[f] rank for %s is now %d", args[1], nrank));
+            player.sendMessage(String.format(Language.get("RANKFORXIS"), args[1], nrank));
             return true;
         }
         
@@ -4137,7 +4132,7 @@ public class P extends JavaPlugin implements Listener {
             fp = getFactionPlayer(player.getName());
 
             if (fp == null) {
-                player.sendMessage("§7[f] You are not in a faction.");
+                player.sendMessage(Language.get("NOTINFACTION"));
                 return true;
             }            
 
@@ -4177,7 +4172,7 @@ public class P extends JavaPlugin implements Listener {
             fp = getFactionPlayer(player.getName());
             
             if (fp == null) {
-                player.sendMessage("§7[f] You are not in a faction.");
+                player.sendMessage(Language.get("NOTINFACTION"));
                 return true;
             }
             
@@ -4218,7 +4213,7 @@ public class P extends JavaPlugin implements Listener {
                     
             fp = getFactionPlayer(player.getName());
             if (fp == null) {
-                player.sendMessage("§7[f] You are not in a faction.");
+                player.sendMessage(Language.get("NOTINFACTION"));
                 return true;
             }
             
