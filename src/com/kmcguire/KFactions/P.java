@@ -25,6 +25,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
+import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Field;
 import java.net.URL;
 import java.net.URLConnection;
@@ -110,40 +111,204 @@ class DataDumper implements Runnable {
     }
 }
 
+class LocaleFile {
+    private HashMap<String, Object>     dict;
+    
+    public String getString(String key) {
+        Object          out;
+        
+        out = dict.get(key);
+        
+        if (out instanceof String) {
+            return (String)out;
+        }
+        
+        return null;
+    }
+    
+    public List<String> getStringList(String key) {
+        Object          out;
+        
+        out = dict.get(key);
+        
+        if (out instanceof List) {
+            return (List<String>)out;
+        }
+        
+        return null;        
+    }
+    
+    public LocaleFile(byte[] buf) 
+        throws UnsupportedEncodingException {
+        List<String>            lines;
+        String                  key;
+        String                  value;
+        boolean                 isList;
+        List                    listElement;
+        
+        lines = readLines(buf);
+        
+        dict = new HashMap<String, Object>();
+        isList = false;
+        listElement = null;
+        
+        for (String line : lines) {
+            //Bukkit.getLogger().info(String.format("line:%s", line));
+            if (line.startsWith(":")) {
+                if (listElement != null) {
+                    line = line.substring(1);
+                    listElement.add(line);
+                    //Bukkit.getLogger().info(String.format("***%s", line));
+                }
+            } else {
+                if (line.indexOf("=") > -1) {
+                    isList = false;
+                    key = line.substring(0, line.indexOf("=")).trim();
+                    value = line.substring(line.indexOf("=") + 1);
+                    //Bukkit.getLogger().info(String.format("%s=%s", key, value));
+                    dict.put(key, value);
+                } else {
+                    //Bukkit.getLogger().info(String.format("list:%s", line.trim()));
+                    listElement = new ArrayList();
+                    dict.put(line.trim(), listElement);
+                }
+            }
+            continue;
+        }
+    }
+    
+    private byte[] copyBytes(byte[] buf, int offset, int length) {
+        byte[]      out;
+        
+        out = new byte[length];
+        
+        for (int x = 0; x < length; ++x) {
+            out[x] = buf[offset + x];
+        }
+        
+        return out;
+    }
+    
+    private List readLines(byte[] buf)
+            throws UnsupportedEncodingException {
+        List<String>                list;
+        byte[]                      line;
+        int                         x;
+        int                         offset;
+        
+        list = new ArrayList<String>();
+        
+        x = 0;
+        offset = 0;
+        
+        /* skip the UTF-8 signature */
+        if (buf[0] == 0xef && buf[1] == 0xbb && buf[2] == 0xbf) {
+            x = 3;
+            offset = 3;
+        }
+        
+        for (; x < buf.length; ++x) {
+            if (buf[x] == 0x0a || buf[x] == 0x0d) {
+                /* we dont have an actual line */
+                if (x - offset < 1) {
+                    offset = x + 1;
+                    continue;
+                }
+                
+                line = copyBytes(buf, offset, x - offset);
+                list.add(new String(line, "UTF-8"));
+                offset = x + 1;
+                //Bukkit.getLogger().info(String.format("[%d:%d]:%s", buf[offset+0], buf[offset+1], new String(line)));
+                continue;
+            }
+        }
+        
+        if (x - offset > 0) {
+            line = new byte[x - offset];
+            line = copyBytes(buf, offset, x - offset);
+            list.add(new String(line, "UTF-8"));
+        }
+        
+        return list;
+    }
+}
+
 class Language {
-    private static HashMap<String, String>         single;
-    private static HashMap<String, List<String>>   list;
+    private static LocaleFile              lang;
+    private static LocaleFile              langdef;     
+    private static String                  langName;
     
     public static String get(String id) {
-        return single.get(id);
+        String          o;
+        
+        o = lang.getString(id);
+        if (o == null) {
+            Bukkit.getLogger().info(String.format("WARNING: LANG[%s] ID:%s NOT FOUND", langName, id));
+            o = langdef.getString(id);
+            if (o == null) {
+                Bukkit.getLogger().info(String.format("WARNING: LANG[locale.en] ID:%s NOT FOUND", id));
+            }
+        }
+        
+        return o;
     }
     
     public static List<String> getList(String id) {
-        return list.get(id);
+        List<String>            l;
+        
+        l = lang.getStringList(id);
+        if (l == null) {
+            Bukkit.getLogger().info(String.format("WARNING: LANG[%s] ID:%s NOT FOUND", langName, id));
+            l = langdef.getStringList(id);
+            if (l == null) {
+                Bukkit.getLogger().info(String.format("WARNING: LANG[locale.en] ID:%s NOT FOUND", id));
+            }
+        }
+        
+        return l;
+    }
+    
+    public static byte[] readInputStream(InputStream is) 
+                throws IOException {
+        ByteArrayOutputStream           buf;
+        int                             cnt;
+        byte[]                          _buf;
+        
+        buf = new ByteArrayOutputStream();
+        _buf = new byte[1024];
+        
+        while ((cnt = is.read(_buf, 0, 1024)) > -1) {
+            buf.write(_buf, 0, cnt);
+        }
+        
+        return buf.toByteArray();
     }
     
     public static void loadFrom(String name) {
-        YamlConfiguration       cfg;
-        
-        cfg = new YamlConfiguration();
-        single = new HashMap<String, String>();
-        list = new HashMap<String, List<String>>();
+        lang = loadLocaleFile(name);
+    }
+    
+    public static LocaleFile loadLocaleFile(String name) {
+        InputStream             is;
+        byte[]                  buf;
+        LocaleFile              lf;
+
+        is = Language.class.getClassLoader().getResourceAsStream(name);
+        lf = null;
         
         try {
-            cfg.load(Language.class.getClassLoader().getResourceAsStream(name));
+            buf = readInputStream(is);
+            lf = new LocaleFile(buf);
         } catch (IOException ex) {
-            ex.printStackTrace();
-        } catch (InvalidConfigurationException ex) {
             ex.printStackTrace();
         }
         
-        for (String key : cfg.getKeys(false)) {
-            if (!cfg.isList(key)) {
-                single.put(key, cfg.getString(key));
-            } else {
-                list.put(key, cfg.getStringList(key));
-            }
-        }
+        return lf;
+    }
+    
+    static {
+        langdef = loadLocaleFile("locale.en");
+        lang = null;
     }
 }
 
@@ -885,7 +1050,7 @@ public class P extends JavaPlugin implements Listener {
          * This will setup support for language translations provided there
          * exists a translation file for the specified language.
          */
-        Language.loadFrom("messages.en.yml");
+        Language.loadFrom("locale.en");
         
         /*
          * This will setup the update checker which is used
@@ -1586,10 +1751,10 @@ public class P extends JavaPlugin implements Listener {
             if (thisVersion.getMaj() == 0 &&
                 thisVersion.getMin() == 0 &&
                 thisVersion.getRev() == 0) {
-                p.sendMessage("§d[KFactions] Can not get version from JAR filename. Did you rename the Jar? I am unable to alert you to updates.");
+                p.sendMessage(Language.get("BADJARFILENAMEFORMAT"));
             } else {
                 p.sendMessage(String.format(
-                        "§d[KFactions] The newest version is §c%s§d and your version is §c%s§d. You are missing §c%d§d new features and §c%d§d update/fix patches.",
+                        Language.get("NEWVERSION"),
                         latestVersion, thisVersion, latestVersion.getMin() - thisVersion.getMin(), latestVersion.getRev() - thisVersion.getRev()
                 ));
             }
@@ -1648,7 +1813,7 @@ public class P extends JavaPlugin implements Listener {
 
             if (fchunk.tidu.containsKey(block.getTypeId())) {
                 if (rank < fchunk.tidu.get(block.getTypeId())) {
-                    player.sendMessage(String.format("§7[f] Your rank[%d] needs to be %d or higher for %s!", rank, fchunk.tid.get(block.getTypeId()), TypeIdToNameMap.getNameFromTypeId(block.getTypeId())));
+                    player.sendMessage(String.format(Language.get("NEEDHIGHERRANKTHAN"), rank, fchunk.tid.get(block.getTypeId()), TypeIdToNameMap.getNameFromTypeId(block.getTypeId())));
                     if (!fchunk.tidudefreject)
                         event.setCancelled(true);
                     else
@@ -1662,7 +1827,7 @@ public class P extends JavaPlugin implements Listener {
 
         if (rank < fchunk.mru) {
             event.setCancelled(true);
-            player.sendMessage(String.format("§7[f] Your rank is too low in faction %s.", fchunk.faction.name));
+            player.sendMessage(String.format(Language.get("RANKTOOLOW"), fchunk.faction.name));
             return;
         }
         
@@ -1726,7 +1891,7 @@ public class P extends JavaPlugin implements Listener {
         fchunk = getFactionChunk(w, x, z);
         if (fchunk == null) {
             if (isWorldAnchor(block.getTypeId())) {
-                player.sendMessage("§7[f] You can only place world anchors if you are on faction land.");
+                player.sendMessage(Language.get("WORLDANCHORONLYONCLAIM"));
                 event.setCancelled(true);
                 return;
             }
@@ -1745,7 +1910,7 @@ public class P extends JavaPlugin implements Listener {
                 event.setCancelled(true);
             if (fchunk.tid.containsKey(block.getTypeId())) {
                 if (rank < fchunk.tid.get(block.getTypeId())) {
-                    player.sendMessage(String.format("§7[f] Your rank[%d] needs to be %d or higher for %s!", rank, fchunk.tid.get(block.getTypeId()), TypeIdToNameMap.getNameFromTypeId(block.getTypeId())));
+                    player.sendMessage(String.format(Language.get("NEEDHIGHERRANKTHAN"), rank, fchunk.tid.get(block.getTypeId()), TypeIdToNameMap.getNameFromTypeId(block.getTypeId())));
                     if (!fchunk.tiddefreject)
                         event.setCancelled(true);
                     else
@@ -1757,14 +1922,14 @@ public class P extends JavaPlugin implements Listener {
         }        
         
         if (rank < fchunk.mrb) {
-            player.sendMessage(String.format("§7[f] Your rank is too low in faction %s.", fchunk.faction.name));
+            player.sendMessage(String.format(Language.get("RANKTOOLOW"), fchunk.faction.name));
             event.setCancelled(true);
             return;
         }
 
         if (isWorldAnchor(block.getTypeId())) {
             if (fchunk.faction.walocs.size() > 1) {
-                player.sendMessage(String.format("§7[f] You already have %d/2 world anchors placed. Remove one and replace it.", fchunk.faction.walocs.size()));
+                player.sendMessage(String.format(Language.get("MAXWORLDANCHORS"), fchunk.faction.walocs.size()));
                 event.setCancelled(true);
                 return;
             }
@@ -1814,7 +1979,7 @@ public class P extends JavaPlugin implements Listener {
             
             if (fchunk.tid.containsKey(block.getTypeId())) {
                 if (rank < fchunk.tid.get(block.getTypeId())) {
-                    player.sendMessage(String.format("§7[f] Your rank[%d] needs to be %d or higher for %s!", rank, fchunk.tid.get(block.getTypeId()), TypeIdToNameMap.getNameFromTypeId(block.getTypeId())));
+                    player.sendMessage(String.format(Language.get("NEEDHIGHERRANKTHAN"), rank, fchunk.tid.get(block.getTypeId()), TypeIdToNameMap.getNameFromTypeId(block.getTypeId())));
                     if (!fchunk.tiddefreject)
                         event.setCancelled(true);
                     else
@@ -1827,7 +1992,7 @@ public class P extends JavaPlugin implements Listener {
         
         // FINAL RANK CHECK DO OR DIE TIME
         if (rank < fchunk.mrb) {
-            player.sendMessage(String.format("§7[f] Your rank is too low in faction %s.", fchunk.faction.name));
+            player.sendMessage(String.format(Language.get("RANKTOOLOW"), fchunk.faction.name));
             event.setCancelled(true);
             return;
         }
@@ -1844,7 +2009,7 @@ public class P extends JavaPlugin implements Listener {
                     (wal.y == block.getY()) && 
                     (wal.z == block.getZ()) && 
                     (wal.w.equals(block.getWorld().getName()))) {
-                    player.sendMessage("§7[f] World anchor removed from faction control. You may now place one more.");
+                    player.sendMessage(Language.get("WORLDANCHORREMOVED"));
                     i.remove();
                 }
             }            
@@ -1983,7 +2148,7 @@ public class P extends JavaPlugin implements Listener {
             e = event.getDamager();
             if (e instanceof Player) {
                 p = (Player)e;                
-                p.sendMessage("§7[f] You can not attack someone who is standing on a NOPVP faction zone!");
+                p.sendMessage(Language.get("CANNOTATTACKINNOPVPZONE"));
             }
             event.setCancelled(true);
             return;
@@ -2057,7 +2222,7 @@ public class P extends JavaPlugin implements Listener {
             }
             
             if (autoClaim.contains(player.getName()) && (tc == null)) {
-                player.sendMessage("§7[f] Use §a/f autoclaim§r to turn §aOFF§r:");
+                player.sendMessage(Language.get("AUTOCLAIMTURNOFF"));
                 
                 getServer().getScheduler().runTask(this, new Runnable() {
                     @Override
@@ -2073,12 +2238,12 @@ public class P extends JavaPlugin implements Listener {
             
             // HANDLES walking from one faction chunk to another or walking from wilderness (fc can be null or not)
             if (tc != null) {
-                player.sendMessage(String.format("§7[f] You entered faction %s.", tc.name));
+                player.sendMessage(String.format(Language.get("ENTEREDFACTIONLAND"), tc.name));
                 return;
             }
             // HANDLES walking into wilderness
             if (fc != null) {
-                player.sendMessage("§7[f] You entered wilderness.");
+                player.sendMessage(Language.get("ENTEREDWILDERNESS"));
                 return;
             }            
         }
@@ -2177,98 +2342,32 @@ public class P extends JavaPlugin implements Listener {
     }
     
     public void displayHelp(Player player, String[] args) {
+        String              helpSection;
+        List<String>        lines;
         
         if ((args.length > 1) && args[0].equals("help")) {
             // help rank
-            if (args[1].equalsIgnoreCase("ranks")) {
-                for (String l : Language.getList("HELP_RANKS")) {
-                    player.sendMessage(l);
-                }
-                return;
-            }
+            helpSection = String.format("HELP_%s", args[1].toUpperCase());
+            lines = Language.getList(helpSection);
             
-            // help friends
-            if (args[1].equalsIgnoreCase("friends")) {
-                for (String l : Language.getList("HELP_FRIENDS")) {
-                    player.sendMessage(l);
-                }
-                return;
-            }
-            
-            // help blockrank
-            if (args[1].equalsIgnoreCase("blockrank")) {
-                for (String l : Language.getList("HELP_BLOCKRANK")) {
-                    player.sendMessage(l);
-                }
-                return;
-            }
-            
-            // help zap
-            if (args[1].equalsIgnoreCase("zap")) {
-                for (String l : Language.getList("HELP_ZAP")) {
-                    player.sendMessage(l);
-                }
-                return;
-            }
-            
-            // help home
-            if (args[1].equalsIgnoreCase("home")) {
-                for (String l : Language.getList("HELP_HOME")) {
-                    player.sendMessage(l);
-                }
-                return;
-            }
-
-            if (args[1].equalsIgnoreCase("map")) {
-                for (String l : Language.getList("HELP_MAP")) {
+            if (lines != null) {
+                for (String l : lines) {
                     player.sendMessage(l);
                 }
                 return;
             }            
-            
-            // help teleport
-            if (args[1].equalsIgnoreCase("teleport")) {
-                for (String l : Language.getList("HELP_TELEPORT")) {
-                    player.sendMessage(l);
-                }                
-                return;
+
+            for (String l : Language.getList("HELP_DEFAULT")) {
+                player.sendMessage(l);
             }
-            
-            if (args[1].equalsIgnoreCase("basic")) {
-                for (String l : Language.getList("HELP_BASIC")) {
-                    player.sendMessage(l);
-                }
-                return;
-            }
-            
-            // help anchors
-            if (args[1].equalsIgnoreCase("anchors")) {
-                for (String l : Language.getList("HELP_ANCHORS")) {
-                    player.sendMessage(l);
-                }
-                return;
-            }
-            
-            if (args[1].equalsIgnoreCase("whycharge")) {
-                for (String l : Language.getList("HELP_WHYCHARGE")) {
-                    player.sendMessage(l);
-                }
-                return;
-            }
-            
-            if (args[1].equalsIgnoreCase("tut")) {
-                for (String l : Language.getList("HELP_TUT")) {
-                    player.sendMessage(l);
-                }
-                return;
-            }
-            
             player.sendMessage(String.format(Language.get("HELP_UNKNOWNCMD"), args[1]));
             return;
         }
         
         // no arguments / unknown command / help
-
+       for (String l : Language.getList("HELP_DEFAULT")) {
+            player.sendMessage(l);
+        }
     }
     
     public void showPlayerChunk(Player player, boolean undo) {
