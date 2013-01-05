@@ -284,8 +284,13 @@ class Language {
         return buf.toByteArray();
     }
     
-    public static void loadFrom(String name) {
+    public static boolean loadFrom(String name) {
         lang = loadLocaleFile(name);
+        if (lang == null) {
+            return false;
+        }
+        
+        return true;
     }
     
     public static LocaleFile loadLocaleFile(String name) {
@@ -295,6 +300,10 @@ class Language {
 
         is = Language.class.getClassLoader().getResourceAsStream(name);
         lf = null;
+        
+        if (is == null) {
+            return null;
+        }
         
         try {
             buf = readInputStream(is);
@@ -1050,7 +1059,11 @@ public class P extends JavaPlugin implements Listener {
          * This will setup support for language translations provided there
          * exists a translation file for the specified language.
          */
-        Language.loadFrom("locale.en");
+        getLogger().info(String.format("LOCALE [%s]", Locale.getDefault().getLanguage()));
+        if (!Language.loadFrom(String.format("locale.%s", Locale.getDefault().getLanguage()))) {
+            getLogger().info(String.format("LOCALE [LOAD FAILED] - MAYBE NO LOCALE FOR YOUR DEFAULT LANGUAGE!"));
+            getLogger().info(String.format("   MAYBE YOU CAN CREATE ONE? SEND REQUEST TO kmcg3413@gmail.com"));
+        }
         
         /*
          * This will setup the update checker which is used
