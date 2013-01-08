@@ -1884,7 +1884,6 @@ public class P extends JavaPlugin implements Listener {
                 if (fplayer.faction == fchunk.faction)
                     rank = fplayer.rank;
         }
-        
                 /*
          * If this player is an OP then assign them the OP rank specified from
          * the plugin configuration file. This only happens if they get more
