@@ -241,9 +241,9 @@ class Language {
     public static String get(String id) {
         String          o;
         
-        o = lang.getString(id);
+        o = lang != null ? lang.getString(id) : null;
         if (o == null) {
-            Bukkit.getLogger().info(String.format("WARNING: LANG[%s] ID:%s NOT FOUND", langName, id));
+            //Bukkit.getLogger().info(String.format("WARNING: LANG[%s] ID:%s NOT FOUND", langName, id));
             o = langdef.getString(id);
             if (o == null) {
                 Bukkit.getLogger().info(String.format("WARNING: LANG[locale.en] ID:%s NOT FOUND", id));
@@ -256,9 +256,9 @@ class Language {
     public static List<String> getList(String id) {
         List<String>            l;
         
-        l = lang.getStringList(id);
+        l = lang != null ? lang.getStringList(id) : null;
         if (l == null) {
-            Bukkit.getLogger().info(String.format("WARNING: LANG[%s] ID:%s NOT FOUND", langName, id));
+            //Bukkit.getLogger().info(String.format("WARNING: LANG[%s] ID:%s NOT FOUND", langName, id));
             l = langdef.getStringList(id);
             if (l == null) {
                 Bukkit.getLogger().info(String.format("WARNING: LANG[locale.en] ID:%s NOT FOUND", id));
@@ -1063,7 +1063,7 @@ public class P extends JavaPlugin implements Listener {
          * exists a translation file for the specified language.
          */
         getLogger().info(String.format("LOCALE [%s]", Locale.getDefault().getLanguage()));
-        if (!Language.loadFrom(String.format("locale.%s", Locale.getDefault().getLanguage()))) {
+        if (!Language.loadFrom(String.format("locale.%s", "ru"))) {
             getLogger().info(String.format("LOCALE [LOAD FAILED] - MAYBE NO LOCALE FOR YOUR DEFAULT LANGUAGE!"));
             getLogger().info(String.format("   MAYBE YOU CAN CREATE ONE? SEND REQUEST TO kmcg3413@gmail.com"));
         }
