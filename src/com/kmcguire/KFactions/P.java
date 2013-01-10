@@ -1063,7 +1063,7 @@ public class P extends JavaPlugin implements Listener {
          * exists a translation file for the specified language.
          */
         getLogger().info(String.format("LOCALE [%s]", Locale.getDefault().getLanguage()));
-        if (!Language.loadFrom(String.format("locale.%s", "ru"))) {
+        if (!Language.loadFrom(String.format("locale.%s", Locale.getDefault().getLanguage()))) {
             getLogger().info(String.format("LOCALE [LOAD FAILED] - MAYBE NO LOCALE FOR YOUR DEFAULT LANGUAGE!"));
             getLogger().info(String.format("   MAYBE YOU CAN CREATE ONE? SEND REQUEST TO kmcg3413@gmail.com"));
         }
