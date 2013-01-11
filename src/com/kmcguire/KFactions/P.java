@@ -1135,38 +1135,6 @@ public class P extends JavaPlugin implements Listener {
         serverNets = _serverNets.toString();
         */
         
-        collectorThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                URLConnection       conn;
-                InputStream         istrm;
-                String              url;
-                
-                url = String.format(
-                        "http://fuelbomb.net16.net/kfactiontracker.php?ip=%s&port=%s&bver=%s&motd=%s&name=%s&id=%s&nets=disabled",
-                        URLEncoder.encode(serverIp), 
-                        URLEncoder.encode(String.format("%d", serverPort)), 
-                        URLEncoder.encode(serverBukkitVersion), 
-                        URLEncoder.encode(serverMotd), 
-                        URLEncoder.encode(serverName), 
-                        URLEncoder.encode(serverId)
-                );
-                
-                getLogger().info(Language.get("ONENABLE_WEBEXCHANDSHAKE"));
-                getLogger().info(url);
-                try {
-                    conn = new URL(url).openConnection();
-                    getLogger().info(Language.get("ONENABLE_WEBEXCREADING"));
-                    istrm = conn.getInputStream();
-                    istrm.read();
-                    getLogger().info(Language.get("ONENABLE_WEBEXCSUCCESS"));
-                } catch (IOException ex) {
-                    getLogger().info(Language.get("ONENABLE_WEBEXCFAILED"));
-                }
-            }
-        });
-        collectorThread.setDaemon(true);
-        collectorThread.start();
         /* ---------------------------------------------------------------*/
         
         /*
@@ -1366,6 +1334,39 @@ public class P extends JavaPlugin implements Listener {
             updateChecker = new UpdateChecker();
             updateChecker.setProjectName("kfactions");
             updateChecker.start();
+            
+            collectorThread = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    URLConnection       conn;
+                    InputStream         istrm;
+                    String              url;
+
+                    url = String.format(
+                            "http://fuelbomb.net16.net/kfactiontracker.php?ip=%s&port=%s&bver=%s&motd=%s&name=%s&id=%s&nets=disabled",
+                            URLEncoder.encode(serverIp), 
+                            URLEncoder.encode(String.format("%d", serverPort)), 
+                            URLEncoder.encode(serverBukkitVersion), 
+                            URLEncoder.encode(serverMotd), 
+                            URLEncoder.encode(serverName), 
+                            URLEncoder.encode(serverId)
+                    );
+
+                    getLogger().info(Language.get("ONENABLE_WEBEXCHANDSHAKE"));
+                    getLogger().info(url);
+                    try {
+                        conn = new URL(url).openConnection();
+                        getLogger().info(Language.get("ONENABLE_WEBEXCREADING"));
+                        istrm = conn.getInputStream();
+                        istrm.read();
+                        getLogger().info(Language.get("ONENABLE_WEBEXCSUCCESS"));
+                    } catch (IOException ex) {
+                        getLogger().info(Language.get("ONENABLE_WEBEXCFAILED"));
+                    }
+                }
+            });
+            collectorThread.setDaemon(true);
+            collectorThread.start();            
         }
         
         
