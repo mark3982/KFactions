@@ -371,6 +371,7 @@ public class P extends JavaPlugin implements Listener {
     String                  usagePermission;
     //
     private int             opRank;
+    boolean                 canCheckForUpdates;
     
     
     // THIS HOLDS THE SPAWN LOCATION _IF_ IT HAS BEEN ENABLED, THIS IS
@@ -1069,16 +1070,6 @@ public class P extends JavaPlugin implements Listener {
         }
         
         /*
-         * This will setup the update checker which is used
-         * to check if a newer version can be downloaded whenever
-         * anyone with the OP privledge or the bypass permission
-         * logs into the server. Then it notifies them.
-         */
-        updateChecker = new UpdateChecker();
-        updateChecker.setProjectName("kfactions");
-        updateChecker.start();
-        
-        /*
          * This is used to provide a link between this plugin and a central
          * place. Using this we are able to get an idea of how many servers
          * are using the plugin, their version, and also exchange information
@@ -1299,6 +1290,11 @@ public class P extends JavaPlugin implements Listener {
             else
                 scannerWaitTime = 60 * 60;
             
+            if (cfg.contains("canCheckForUpdates"))
+                canCheckForUpdates = cfg.getBoolean("canCheckForUpdates");
+            else
+                canCheckForUpdates = true;
+            
             if (cfg.contains("landPowerCostPerHour"))
                 landPowerCostPerHour = cfg.getInt("landPowerCostPerHour");
             else
@@ -1329,6 +1325,7 @@ public class P extends JavaPlugin implements Listener {
                 tmp.add(worldName);
             }
             
+            cfg.set("canCheckForUpdates", canCheckForUpdates);
             cfg.set("opRank", opRank);
             cfg.set("usagePermission", usagePermission);
             cfg.set("requirePermission", requirePermission);
@@ -1357,6 +1354,18 @@ public class P extends JavaPlugin implements Listener {
         } catch (IOException ex) {
             ex.printStackTrace();
             return;
+        }
+        
+        /*
+         * This will setup the update checker which is used
+         * to check if a newer version can be downloaded whenever
+         * anyone with the OP privledge or the bypass permission
+         * logs into the server. Then it notifies them.
+         */
+        if (canCheckForUpdates) {
+            updateChecker = new UpdateChecker();
+            updateChecker.setProjectName("kfactions");
+            updateChecker.start();
         }
         
         

@@ -7,6 +7,11 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.security.CodeSource;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import org.w3c.dom.Document;
+import org.xml.sax.SAXException;
 
 public class UpdateChecker {
     public  long getCheckDelay() {
@@ -124,6 +129,29 @@ public class UpdateChecker {
                         }
                         
                         page = bb.toString();
+                        
+                        /*
+                        DocumentBuilderFactory          dbf;
+                        
+                        
+                        dbf = DocumentBuilderFactory.newInstance();
+                        
+                        DocumentBuilder                 db;
+                        Document                        dom;
+                        
+                        try {
+                            db = dbf.newDocumentBuilder();
+                            dom = db.parse(page);
+                            
+                            
+                            
+                        } catch (ParserConfigurationException ex) {
+                            ex.printStackTrace();
+                        } catch (SAXException ex) {
+                            ex.printStackTrace();
+                        }
+                        */
+                        
                         
                         //bmark = String.format("\"/server-mods/%s/files/", projectName);
                         //bmark = "\"http://dev.bukkit.org/";
