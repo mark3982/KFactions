@@ -1773,8 +1773,8 @@ public class P extends JavaPlugin implements Listener {
         if (!p.isOp() && !p.hasPermission(bypassPermission)) {
             return;
         }
-        
-        if (updateChecker.canUpdate()) {
+
+        if (canCheckForUpdates && updateChecker.canUpdate()) {
             thisVersion = updateChecker.getThisVersion();
             latestVersion = updateChecker.getLatestVersion();
             

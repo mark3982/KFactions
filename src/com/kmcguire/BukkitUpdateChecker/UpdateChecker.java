@@ -7,11 +7,9 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.security.CodeSource;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
-import org.w3c.dom.Document;
-import org.xml.sax.SAXException;
+import java.util.LinkedList;
+import java.util.List;
+import org.bukkit.Bukkit;
 
 public class UpdateChecker {
     public  long getCheckDelay() {
@@ -62,11 +60,42 @@ public class UpdateChecker {
         }
     }
     
-    public  void start() {
+    public void start() {
         if (!checkThread.isAlive()) {
             checkThread.setDaemon(true);
             checkThread.start();
         }
+    }
+    
+    private String getBetween(String input, String start, String end) {
+        int         s, e;
+        
+        s = input.indexOf(start);
+        
+        if (end == null) {
+            return input.substring(s + start.length());
+        }
+        
+        e = input.indexOf(end, s + 1);
+        
+        return input.substring(s + start.length(), e);
+    }
+    
+    private List<String> split(String input, int offset, String delim) {
+        int                 stop;
+        LinkedList<String>  list;
+        
+        list = new LinkedList<String>();
+        
+        do {
+            stop = input.indexOf(delim, offset);
+            if (stop > -1) {
+                list.add(input.substring(offset, stop));
+                offset = stop + delim.length();
+            }
+        } while (stop > -1);
+        
+        return list;
     }
     
     public UpdateChecker() {
@@ -112,6 +141,14 @@ public class UpdateChecker {
                     Version                 high;
                     Version                 cur;
                     
+                    List<String>            parts;
+                    String                  dlTitle;
+                    String                  dlType;
+                    String                  dlStatus;
+                    String                  dlDate;
+                    String                  dlGameVersion;
+                    String                  dlFileName;
+                    
                     high = null;
                     
                     url = String.format("http://dev.bukkit.org/server-mods/%s/files/", projectName);
@@ -130,69 +167,32 @@ public class UpdateChecker {
                         
                         page = bb.toString();
                         
-                        /*
-                        DocumentBuilderFactory          dbf;
+                        parts = split(page, 0, "<tr class=\"");
                         
+                        dlFileName = null;
                         
-                        dbf = DocumentBuilderFactory.newInstance();
-                        
-                        DocumentBuilder                 db;
-                        Document                        dom;
-                        
-                        try {
-                            db = dbf.newDocumentBuilder();
-                            dom = db.parse(page);
-                            
-                            
-                            
-                        } catch (ParserConfigurationException ex) {
-                            ex.printStackTrace();
-                        } catch (SAXException ex) {
-                            ex.printStackTrace();
-                        }
-                        */
-                        
-                        
-                        //bmark = String.format("\"/server-mods/%s/files/", projectName);
-                        //bmark = "\"http://dev.bukkit.org/";
-                        bmark = "<td class=\"col-filename\">";
-                        
-                        for (cnt = page.indexOf(bmark); page.indexOf(bmark, cnt + 1) > -1; cnt = page.indexOf(bmark, cnt + 1)) {
-                            end = page.indexOf("</td>", cnt + 1);
-                            if (end < 0) {
+                        for (String _part : parts) {
+                            //Bukkit.getLogger().info(String.format("PART:%s", _part));
+                            if (_part.indexOf("<td class=\"col-file\">") < 0) {
                                 continue;
                             }
+                            dlTitle = getBetween(getBetween(_part, "<td class=\"col-file\">", "</a>"), ">", null);
+                            dlType = getBetween(getBetween(_part, "<span class=\"file-type", "</span>"), "\">", null);
+                            dlStatus = getBetween(_part, "<span class=\"file-status file-status-s\">", "</span>");
+                            dlDate = getBetween(getBetween(_part, "<span class=\"standard-date\"", "</span>"), ">", null);
+                            dlGameVersion = getBetween(getBetween(_part, "<span class=\"col-game-version\">", "</li>"), "<li>", null);
+                            dlFileName = getBetween(_part, "<td class=\"col-filename\">", "</td>").trim();
+                            //Bukkit.getLogger().info(String.format("dlTitle:[%s] dlType:[%s] dlStatus:[%s] dlDate:[%s] dlGameVersion:[%s] dlFileName:[%s]",
+                            //        dlTitle, dlType, dlStatus, dlDate, dlGameVersion, dlFileName
+                            //));
                             
-                            part = page.substring(cnt + bmark.length(), end);
-                            part = part.toLowerCase();
-                            part = part.trim();
-                            
-                            end = part.lastIndexOf(".");
-                            
-                            if (end < 0) {
-                                continue;
+                            if (dlType.toLowerCase().equals("release")) {
+                                cur = new Version(dlTitle);
+
+                                if (high == null || cur.isHigherThan(high)) {
+                                    high = cur;
+                                }
                             }
-                            
-                            if (!part.substring(end).equals(".jar")) {
-                                continue;
-                            }
-                            
-                            part = part.substring(0, end);
-                            
-                            end = part.lastIndexOf("-");
-                            
-                            if (end < 0) {
-                                continue;
-                            }
-                            
-                            part = part.substring(end + 1);
-                            
-                            cur = new Version(part);
-                            
-                            if (high == null || cur.isHigherThan(high)) {
-                                high = cur;
-                            }
-                            //
                         }
                         latestVersion = high;
                         // http://dev.bukkit.org/media/files/661/47/KFactions-1.18.41B.jar
